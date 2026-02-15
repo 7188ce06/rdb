@@ -97,3 +97,89 @@ class Tests < Test::Unit::TestCase
     assert_equal(f0.pid + 1, f1.pid)
   end
 end
+
+class TablePageTests < Test::Unit::TestCase
+  def test_0
+    x = "A".b*PAGE_SIZE
+    tp_init!(x, 50)
+    assert_equal(tp_next_page_id(x), 50)
+    tp_set_next_page_id!(x, 69)
+    assert_equal(tp_next_page_id(x), 69)
+  end
+
+  def test_1
+    x = "\0".b*PAGE_SIZE
+    tp_init!(x, 1)
+    assert_equal(tp_insert_tuple!(x, "ABCDE".b), 0)
+    assert_equal(tp_insert_tuple!(x, "KRAMER".b), 1)
+    assert_equal(tp_insert_tuple!(x, "KUHN".b), 2)
+    (slot_count, tuples_start, next_pid) = x[0..7].unpack("nnN")
+    assert_equal(slot_count, 3)
+    assert_equal(tuples_start, PAGE_SIZE-15)
+    assert_equal(next_pid, 1)
+    (s1_start, s1_size, s2_start, s2_size, s3_start, s3_size) = x[8, 12].unpack("nnnnnn")
+    assert_equal(s1_start, PAGE_SIZE-5)
+    assert_equal(s1_size, 5)
+    assert_equal(x[s1_start, s1_size], "ABCDE".b)
+    assert_equal(tp_get_tuple(x, 0), "ABCDE".b)
+    assert_equal(s2_start, PAGE_SIZE-11)
+    assert_equal(s2_size, 6)
+    assert_equal(x[s2_start, s2_size], "KRAMER".b)
+    assert_equal(tp_get_tuple(x, 1), "KRAMER".b)
+    assert_equal(s3_start, PAGE_SIZE-15)
+    assert_equal(s3_size, 4)
+    assert_equal(x[s3_start, s3_size], "KUHN".b)
+    assert_equal(tp_get_tuple(x, 2), "KUHN".b)
+
+    xs = []
+    tp_each_tuple(x) do |t|
+      xs.append(t)
+    end
+    assert_equal(xs, ["ABCDE", "KRAMER", "KUHN"])
+  end
+end
+
+class TableHeapTests < Test::Unit::TestCase
+  def test_foo
+    t = Tempfile.create('foo', './tmp/')
+    pool = PagePool.new(t.path, 3)
+
+    theap = TableHeap.new(pool, true)
+    theap.insert("whitman")
+    theap.insert("burroughs")
+    theap.insert("ginsberg")
+    tp_set_next_page_id!(theap.pool.fetchPage(0).data, 1)
+    tp_init!(theap.pool.fetchPage(1).data, nil)
+    theap.insert("jarule")
+    theap.insert("50cent")
+    theap.insert("kidrock")
+
+    assert_equal(theap.get(0, 0), "whitman")
+    assert_equal(theap.get(0, 1), "burroughs")
+    assert_equal(theap.get(0, 2), "ginsberg")
+    assert_equal(theap.get(1, 0), "jarule")
+    assert_equal(theap.get(1, 1), "50cent")
+    assert_equal(theap.get(1, 2), "kidrock")
+  end
+
+  def test_bar
+    t = Tempfile.create('foo', './tmp/')
+    pool = PagePool.new(t.path, 3)
+    theap = TableHeap.new(pool, true)
+
+    # 4096 - 8 = 4088 (8 bytes for header)
+    # 4088 / (4 + 4) = 511 (4 bytes for directory entry)
+
+    i = 0
+    while i < 511
+      (pid, slot_id) = theap.insert("jack")
+      assert_equal(pid, 0)
+      assert_equal(slot_id, i)
+      i += 1
+    end
+
+    (pid, slot_id) = theap.insert("jim")
+    assert_equal(pid, 1)
+    assert_equal(slot_id, 0)
+  end
+end

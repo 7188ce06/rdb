@@ -35,6 +35,8 @@ class PagePool
     @next_pid = @dbfile.size / PAGE_SIZE
   end
 
+  # XXX: Maybe this shouldn't simulate 'newPage'.  Otherwise, how am I ensuring
+  #      that @next_pid is correct?
   def fetchPage(pid)
     i = @frames_map[pid]
     if !i.nil?
@@ -68,6 +70,8 @@ class PagePool
     end
   end
 
+  # XXX: The handling of #dirty might be wrong.  Shouldn't consumers just
+  #      update @dirty after they make a change?
   def unpinPage(pid, dirty)
     i = @frames_map[pid]
     f = @frames[i]
@@ -125,5 +129,121 @@ class PagePool
         @frames[frame_index].dirty = false
       end
     end
+  end
+end
+
+SLOT_DIR_ELT_SIZE = 4
+
+def tp_init!(page, next_page_id)
+  if next_page_id == nil
+    next_page_id = (2**32)-1
+  end
+  page[0..7] = [0, PAGE_SIZE, next_page_id].pack("nnN")
+end
+
+def tp_next_page_id(page)
+  (x, y, z) = page[0..7].unpack("nnN")
+  if z == (2**32)-1
+    return nil
+  else
+    return z
+  end
+end
+
+def tp_set_next_page_id!(page, pid)
+  if pid == nil
+    pid = (2**32)-1
+  end
+
+  (x,y,z) = page[0..7].unpack("nnN")
+  page[0..7] = [x,y,pid].pack("nnN")
+end
+
+# Update header.slot_count, header.tuples_start
+# Add entry to slot directory
+# Add the tuple to the page
+def tp_insert_tuple!(page, tuple)
+  (slot_count, tuples_start, next_pid) = page[0..7].unpack("nnN")
+  slot_dir_start = 8
+  next_slot_dir = slot_dir_start + slot_count * SLOT_DIR_ELT_SIZE
+
+  new_tuple_start = tuples_start - tuple.bytesize()
+  if next_slot_dir + SLOT_DIR_ELT_SIZE > new_tuple_start
+    return nil
+  end
+
+  page[next_slot_dir, 4] = [new_tuple_start, tuple.bytesize()].pack("nn")
+  page[new_tuple_start, tuple.bytesize()] = tuple
+  page[0..7] = [slot_count+1,new_tuple_start,next_pid].pack("nnN")
+
+  return slot_count
+end
+
+def tp_get_tuple(page, slot_id)
+  (slot_count, tuples_start, next_pid) = page[0..7].unpack("nnN")
+  slot_dir_start = 8
+  (toffset, tlen) = page[slot_dir_start + slot_id*SLOT_DIR_ELT_SIZE, 4].unpack("nn")
+  return page[toffset, tlen]
+end
+
+def tp_each_tuple(page, &block)
+  (slot_count, tuples_start, next_pid) = page[0..7].unpack("nnN")
+  slot_dir_start = 8
+  i = 0
+  while i < slot_count
+    (toffset, tlen) = page[slot_dir_start + i*SLOT_DIR_ELT_SIZE, 4].unpack("nn")
+    block.call(page[toffset, tlen])
+    i += 1
+  end
+end
+
+class TableHeap
+  attr_reader :pool
+
+  def initialize(pool, new)
+    @pool = pool
+    if new
+      x = @pool.newPage
+      tp_init!(x.data, nil)
+      x.dirty = true
+    end
+  end
+
+  def insert(tuple)
+    frame = @pool.fetchPage(0)
+    while tp_next_page_id(frame.data) != nil
+      @pool.unpinPage(frame.pid, false)
+      frame = @pool.fetchPage(tp_next_page_id(frame.data))
+    end
+    @pool.unpinPage(frame.pid, true)
+
+    slot_id = tp_insert_tuple!(frame.data, tuple)
+    if !slot_id.nil?
+      return [frame.pid, slot_id]
+    else
+      np = @pool.newPage()
+      tp_init!(np.data, nil)
+      slot_id = tp_insert_tuple!(np.data, tuple)
+      @pool.unpinPage(np.pid, true)
+      tp_set_next_page_id!(frame.data, np.pid)
+      return [np.pid, slot_id]
+    end
+  end
+
+  def get(pid, slot_id)
+    frame = @pool.fetchPage(pid)
+    @pool.unpinPage(pid, false)
+    return tp_get_tuple(frame.data, slot_id)
+  end
+
+  def scan(&block)
+    frame = @pool.fetchPage(0)
+    tp_each_tuple(frame.data) {|t| block.call(t)}
+    while tp_next_page_id(frame.data) != nil
+      @pool.unpinPage(frame.pid, true)
+      frame = @pool.fetchPage(tp_next_page_id(frame.data))
+      tp_each_tuple(frame.data) {|t| block.call(t)}
+    end
+    @pool.unpinPage(frame.pid, true)
   end
 end
