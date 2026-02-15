@@ -203,47 +203,54 @@ class TableHeap
   def initialize(pool, new)
     @pool = pool
     if new
-      x = @pool.newPage
+      x = @pool.newPage()
       tp_init!(x.data, nil)
-      x.dirty = true
+      @pool.unpinPage(x.pid, true)
     end
   end
 
   def insert(tuple)
     frame = @pool.fetchPage(0)
-    while tp_next_page_id(frame.data) != nil
+    npid = tp_next_page_id(frame.data)
+    while npid != nil
       @pool.unpinPage(frame.pid, false)
-      frame = @pool.fetchPage(tp_next_page_id(frame.data))
+
+      frame = @pool.fetchPage(npid)
+      npid = tp_next_page_id(frame.data)
     end
-    @pool.unpinPage(frame.pid, true)
 
     slot_id = tp_insert_tuple!(frame.data, tuple)
     if !slot_id.nil?
+      @pool.unpinPage(frame.pid, true)
       return [frame.pid, slot_id]
     else
       np = @pool.newPage()
       tp_init!(np.data, nil)
       slot_id = tp_insert_tuple!(np.data, tuple)
-      @pool.unpinPage(np.pid, true)
       tp_set_next_page_id!(frame.data, np.pid)
+      @pool.unpinPage(frame.pid, true)
+      @pool.unpinPage(np.pid, true)
       return [np.pid, slot_id]
     end
   end
 
   def get(pid, slot_id)
     frame = @pool.fetchPage(pid)
-    @pool.unpinPage(pid, false)
-    return tp_get_tuple(frame.data, slot_id)
+    t = tp_get_tuple(frame.data, slot_id)
+    @pool.unpinPage(frame.pid, false)
+    return t
   end
 
   def scan(&block)
     frame = @pool.fetchPage(0)
+    npid = tp_next_page_id(frame.data)
     tp_each_tuple(frame.data) {|t| block.call(t)}
-    while tp_next_page_id(frame.data) != nil
-      @pool.unpinPage(frame.pid, true)
-      frame = @pool.fetchPage(tp_next_page_id(frame.data))
+    @pool.unpinPage(frame.pid, false)
+    while npid != nil
+      frame = @pool.fetchPage(npid)
+      npid = tp_next_page_id(frame.data)
       tp_each_tuple(frame.data) {|t| block.call(t)}
+      @pool.unpinPage(frame.pid, false)
     end
-    @pool.unpinPage(frame.pid, true)
   end
 end

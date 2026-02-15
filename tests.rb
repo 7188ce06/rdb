@@ -148,8 +148,12 @@ class TableHeapTests < Test::Unit::TestCase
     theap.insert("whitman")
     theap.insert("burroughs")
     theap.insert("ginsberg")
-    tp_set_next_page_id!(theap.pool.fetchPage(0).data, 1)
-    tp_init!(theap.pool.fetchPage(1).data, nil)
+    f0 = theap.pool.fetchPage(0)
+    tp_set_next_page_id!(f0.data, 1)
+    theap.pool.unpinPage(f0.pid, true)
+    f1 = theap.pool.newPage()
+    tp_init!(f1.data, nil)
+    theap.pool.unpinPage(f1.pid, true)
     theap.insert("jarule")
     theap.insert("50cent")
     theap.insert("kidrock")
@@ -181,5 +185,16 @@ class TableHeapTests < Test::Unit::TestCase
     (pid, slot_id) = theap.insert("jim")
     assert_equal(pid, 1)
     assert_equal(slot_id, 0)
+
+    xs = []
+    theap.scan do |tpl|
+      xs.append(tpl)
+    end
+    i = 0
+    while i < 511
+      assert_equal(xs[i], "jack")
+      i += 1
+    end
+    assert_equal(xs[i], "jim")
   end
 end
