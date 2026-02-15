@@ -197,6 +197,8 @@ def tp_each_tuple(page, &block)
   end
 end
 
+RecordID = Struct.new(:pid, :slot_id)
+
 class TableHeap
   attr_reader :pool
 
@@ -222,7 +224,7 @@ class TableHeap
     slot_id = tp_insert_tuple!(frame.data, tuple)
     if !slot_id.nil?
       @pool.unpinPage(frame.pid, true)
-      return [frame.pid, slot_id]
+      return RecordID.new(frame.pid, slot_id)
     else
       np = @pool.newPage()
       tp_init!(np.data, nil)
@@ -230,13 +232,13 @@ class TableHeap
       tp_set_next_page_id!(frame.data, np.pid)
       @pool.unpinPage(frame.pid, true)
       @pool.unpinPage(np.pid, true)
-      return [np.pid, slot_id]
+      return RecordID.new(np.pid, slot_id)
     end
   end
 
-  def get(pid, slot_id)
-    frame = @pool.fetchPage(pid)
-    t = tp_get_tuple(frame.data, slot_id)
+  def get(rid)
+    frame = @pool.fetchPage(rid.pid)
+    t = tp_get_tuple(frame.data, rid.slot_id)
     @pool.unpinPage(frame.pid, false)
     return t
   end

@@ -145,7 +145,9 @@ class TableHeapTests < Test::Unit::TestCase
     pool = PagePool.new(t.path, 3)
 
     theap = TableHeap.new(pool, true)
-    theap.insert("whitman")
+    r = theap.insert("whitman")
+    assert_equal(r.pid, 0)
+    assert_equal(r.slot_id, 0)
     theap.insert("burroughs")
     theap.insert("ginsberg")
     f0 = theap.pool.fetchPage(0)
@@ -154,16 +156,18 @@ class TableHeapTests < Test::Unit::TestCase
     f1 = theap.pool.newPage()
     tp_init!(f1.data, nil)
     theap.pool.unpinPage(f1.pid, true)
-    theap.insert("jarule")
+    r = theap.insert("jarule")
+    assert_equal(r.pid, 1)
+    assert_equal(r.slot_id, 0)
     theap.insert("50cent")
     theap.insert("kidrock")
 
-    assert_equal(theap.get(0, 0), "whitman")
-    assert_equal(theap.get(0, 1), "burroughs")
-    assert_equal(theap.get(0, 2), "ginsberg")
-    assert_equal(theap.get(1, 0), "jarule")
-    assert_equal(theap.get(1, 1), "50cent")
-    assert_equal(theap.get(1, 2), "kidrock")
+    assert_equal(theap.get(RecordID.new(0, 0)), "whitman")
+    assert_equal(theap.get(RecordID.new(0, 1)), "burroughs")
+    assert_equal(theap.get(RecordID.new(0, 2)), "ginsberg")
+    assert_equal(theap.get(RecordID.new(1, 0)), "jarule")
+    assert_equal(theap.get(RecordID.new(1, 1)), "50cent")
+    assert_equal(theap.get(RecordID.new(1, 2)), "kidrock")
   end
 
   def test_bar
@@ -176,15 +180,15 @@ class TableHeapTests < Test::Unit::TestCase
 
     i = 0
     while i < 511
-      (pid, slot_id) = theap.insert("jack")
-      assert_equal(pid, 0)
-      assert_equal(slot_id, i)
+      rid = theap.insert("jack")
+      assert_equal(rid.pid, 0)
+      assert_equal(rid.slot_id, i)
       i += 1
     end
 
-    (pid, slot_id) = theap.insert("jim")
-    assert_equal(pid, 1)
-    assert_equal(slot_id, 0)
+    rid = theap.insert("jim")
+    assert_equal(rid.pid, 1)
+    assert_equal(rid.slot_id, 0)
 
     xs = []
     theap.scan do |tpl|
