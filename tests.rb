@@ -110,32 +110,35 @@ class TablePageTests < Test::Unit::TestCase
   def test_1
     x = "\0".b*PAGE_SIZE
     tp_init!(x, 1)
-    assert_equal(tp_insert_tuple!(x, "ABCDE".b), 0)
-    assert_equal(tp_insert_tuple!(x, "KRAMER".b), 1)
-    assert_equal(tp_insert_tuple!(x, "KUHN".b), 2)
+    tp1 = Tuple.new(3, 33)
+    tp2 = Tuple.new(8, 88)
+    tp3 = Tuple.new(4, 44)
+    assert_equal(tp_insert_tuple!(x, tp1), 0)
+    assert_equal(tp_insert_tuple!(x, tp2), 1)
+    assert_equal(tp_insert_tuple!(x, tp3), 2)
     (slot_count, tuples_start, next_pid) = x[0..7].unpack("nnN")
     assert_equal(slot_count, 3)
-    assert_equal(tuples_start, PAGE_SIZE-15)
+    assert_equal(tuples_start, PAGE_SIZE-24)
     assert_equal(next_pid, 1)
     (s1_start, s1_size, s2_start, s2_size, s3_start, s3_size) = x[8, 12].unpack("nnnnnn")
-    assert_equal(s1_start, PAGE_SIZE-5)
-    assert_equal(s1_size, 5)
-    assert_equal(x[s1_start, s1_size], "ABCDE".b)
-    assert_equal(tp_get_tuple(x, 0), "ABCDE".b)
-    assert_equal(s2_start, PAGE_SIZE-11)
-    assert_equal(s2_size, 6)
-    assert_equal(x[s2_start, s2_size], "KRAMER".b)
-    assert_equal(tp_get_tuple(x, 1), "KRAMER".b)
-    assert_equal(s3_start, PAGE_SIZE-15)
-    assert_equal(s3_size, 4)
-    assert_equal(x[s3_start, s3_size], "KUHN".b)
-    assert_equal(tp_get_tuple(x, 2), "KUHN".b)
+    assert_equal(s1_start, PAGE_SIZE-8)
+    assert_equal(s1_size, 8)
+    assert_equal(Tuple.dec(x[s1_start, s1_size]), tp1)
+    assert_equal(tp_get_tuple(x, 0), tp1)
+    assert_equal(s2_start, PAGE_SIZE-16)
+    assert_equal(s2_size, 8)
+    assert_equal(Tuple.dec(x[s2_start, s2_size]), tp2)
+    assert_equal(tp_get_tuple(x, 1), tp2)
+    assert_equal(s3_start, PAGE_SIZE-24)
+    assert_equal(s3_size, 8)
+    assert_equal(Tuple.dec(x[s3_start, s3_size]), tp3)
+    assert_equal(tp_get_tuple(x, 2), tp3)
 
     xs = []
     tp_each_tuple(x) do |t|
       xs.append(t)
     end
-    assert_equal(xs, ["ABCDE", "KRAMER", "KUHN"])
+    assert_equal(xs, [tp1, tp2, tp3])
   end
 end
 
@@ -145,29 +148,35 @@ class TableHeapTests < Test::Unit::TestCase
     pool = PagePool.new(t.path, 3)
 
     theap = TableHeap.new(pool, true)
-    r = theap.insert("whitman")
+    tp1 = Tuple.new(1, 2)
+    tp2 = Tuple.new(9, 20)
+    tp3 = Tuple.new(55, 100)
+    r = theap.insert(tp1)
     assert_equal(r.pid, 0)
     assert_equal(r.slot_id, 0)
-    theap.insert("burroughs")
-    theap.insert("ginsberg")
+    theap.insert(tp2)
+    theap.insert(tp3)
     f0 = theap.pool.fetchPage(0)
     tp_set_next_page_id!(f0.data, 1)
     theap.pool.unpinPage(f0.pid, true)
     f1 = theap.pool.newPage()
     tp_init!(f1.data, nil)
     theap.pool.unpinPage(f1.pid, true)
-    r = theap.insert("jarule")
+    tp4 = Tuple.new(8, 20)
+    tp5 = Tuple.new(22, 69)
+    tp6 = Tuple.new(1000, 2000)
+    r = theap.insert(tp4)
     assert_equal(r.pid, 1)
     assert_equal(r.slot_id, 0)
-    theap.insert("50cent")
-    theap.insert("kidrock")
+    theap.insert(tp5)
+    theap.insert(tp6)
 
-    assert_equal(theap.get(RecordID.new(0, 0)), "whitman")
-    assert_equal(theap.get(RecordID.new(0, 1)), "burroughs")
-    assert_equal(theap.get(RecordID.new(0, 2)), "ginsberg")
-    assert_equal(theap.get(RecordID.new(1, 0)), "jarule")
-    assert_equal(theap.get(RecordID.new(1, 1)), "50cent")
-    assert_equal(theap.get(RecordID.new(1, 2)), "kidrock")
+    assert_equal(theap.get(RecordID.new(0, 0)), tp1)
+    assert_equal(theap.get(RecordID.new(0, 1)), tp2)
+    assert_equal(theap.get(RecordID.new(0, 2)), tp3)
+    assert_equal(theap.get(RecordID.new(1, 0)), tp4)
+    assert_equal(theap.get(RecordID.new(1, 1)), tp5)
+    assert_equal(theap.get(RecordID.new(1, 2)), tp6)
   end
 
   def test_bar
@@ -176,17 +185,17 @@ class TableHeapTests < Test::Unit::TestCase
     theap = TableHeap.new(pool, true)
 
     # 4096 - 8 = 4088 (8 bytes for header)
-    # 4088 / (4 + 4) = 511 (4 bytes for directory entry)
+    # 4088 / (8 + 4) = 340r8 (8 for each tuple and 4 for its directory entry)
 
     i = 0
-    while i < 511
-      rid = theap.insert("jack")
+    while i < 340
+      rid = theap.insert(Tuple.new(i, 2*i))
       assert_equal(rid.pid, 0)
       assert_equal(rid.slot_id, i)
       i += 1
     end
 
-    rid = theap.insert("jim")
+    rid = theap.insert(Tuple.new(i, 3*i+1))
     assert_equal(rid.pid, 1)
     assert_equal(rid.slot_id, 0)
 
@@ -195,10 +204,10 @@ class TableHeapTests < Test::Unit::TestCase
       xs.append(tpl)
     end
     i = 0
-    while i < 511
-      assert_equal(xs[i], "jack")
+    while i < 340
+      assert_equal(xs[i], Tuple.new(i, 2*i))
       i += 1
     end
-    assert_equal(xs[i], "jim")
+    assert_equal(xs[i], Tuple.new(i, 3*i+1))
   end
 end

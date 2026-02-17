@@ -159,6 +159,27 @@ def tp_set_next_page_id!(page, pid)
   page[0..7] = [x,y,pid].pack("nnN")
 end
 
+class Tuple
+  attr_accessor :a, :b
+  def initialize(a, b)
+    @a = a
+    @b = b
+  end
+
+  def ==(other)
+    other.is_a?(Tuple) && @a == other.a && @b == other.b
+  end
+
+  def enc
+    [@a, @b].pack("NN")
+  end
+
+  def self.dec(x)
+    (a, b) = x.unpack("NN")
+    return Tuple.new(a, b)
+  end
+end
+
 # Update header.slot_count, header.tuples_start
 # Add entry to slot directory
 # Add the tuple to the page
@@ -167,13 +188,14 @@ def tp_insert_tuple!(page, tuple)
   slot_dir_start = 8
   next_slot_dir = slot_dir_start + slot_count * SLOT_DIR_ELT_SIZE
 
-  new_tuple_start = tuples_start - tuple.bytesize()
+  etuple = tuple.enc()
+  new_tuple_start = tuples_start - etuple.bytesize()
   if next_slot_dir + SLOT_DIR_ELT_SIZE > new_tuple_start
     return nil
   end
 
-  page[next_slot_dir, 4] = [new_tuple_start, tuple.bytesize()].pack("nn")
-  page[new_tuple_start, tuple.bytesize()] = tuple
+  page[next_slot_dir, 4] = [new_tuple_start, etuple.bytesize()].pack("nn")
+  page[new_tuple_start, etuple.bytesize()] = etuple
   page[0..7] = [slot_count+1,new_tuple_start,next_pid].pack("nnN")
 
   return slot_count
@@ -183,7 +205,7 @@ def tp_get_tuple(page, slot_id)
   (slot_count, tuples_start, next_pid) = page[0..7].unpack("nnN")
   slot_dir_start = 8
   (toffset, tlen) = page[slot_dir_start + slot_id*SLOT_DIR_ELT_SIZE, 4].unpack("nn")
-  return page[toffset, tlen]
+  return Tuple.dec(page[toffset, tlen])
 end
 
 def tp_each_tuple(page, &block)
@@ -192,7 +214,7 @@ def tp_each_tuple(page, &block)
   i = 0
   while i < slot_count
     (toffset, tlen) = page[slot_dir_start + i*SLOT_DIR_ELT_SIZE, 4].unpack("nn")
-    block.call(page[toffset, tlen])
+    block.call(Tuple.dec(page[toffset, tlen]))
     i += 1
   end
 end
