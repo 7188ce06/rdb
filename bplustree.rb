@@ -3,6 +3,7 @@ include Test::Unit::Assertions
 
 MAX_LEAF_KEYS = 4
 LEAF_PROMO_INDEX = 2
+INTERNAL_PROMO_INDEX = 1
 
 class Tree
   attr_accessor :root
@@ -11,7 +12,7 @@ class Tree
   end
 
   def ==(other)
-    @root == other.root
+    other.is_a?(Tree) and @root == other.root
   end
 end
 
@@ -25,21 +26,21 @@ class Leaf
   end
 
   def ==(other)
-    @keys == other.keys
+    other.is_a?(Leaf) and @keys == other.keys and @parent == other.parent
   end
 end
 
 class Internal
-  attr_accessor :keys, :childs
+  attr_accessor :keys, :childs, :parent
 
   def initialize(keys, childs)
-    raise "error" if keys.size() + 1 != childs.size()
+    raise "error: mismatch sizes for keys-childs" if keys.size() + 1 != childs.size()
     @keys = keys
     @childs = childs
   end
 
   def ==(other)
-    @keys == other.keys and @childs == other.childs
+    other.is_a?(Internal) and @keys == other.keys and @childs == other.childs and @parent == other.parent
   end
 end
 
@@ -76,37 +77,76 @@ def insert_helper!(tree, node, value)
 end
 
 def promote!(tree, node)
-  pkey = node.keys[LEAF_PROMO_INDEX]
   if node.is_a?(Leaf)
-    left = Leaf.new(*node.keys[0...LEAF_PROMO_INDEX])
-    right = Leaf.new(*node.keys[LEAF_PROMO_INDEX..])
+    pkey = node.keys[LEAF_PROMO_INDEX]
     if node.object_id == tree.root.object_id
+      right_keys = node.keys.slice!(LEAF_PROMO_INDEX..)
+      right = Leaf.new(*right_keys)
+      left = node
+
       tree.root = Internal.new([pkey], [left, right])
       left.parent = tree.root
       right.parent = tree.root
     else
-      # Which child# is this node currently for its parent?
-      orig_i = 0
-      while node.object_id != node.parent.childs[orig_i].object_id
-        orig_i += 1
-      end
-      puts "OI: #{orig_i}"
-
-      # The orig_i child is goes with the orig_i separator.
-      # And the promo key should immediately follow the orig_i separator.
-      node.parent.keys.insert(orig_i, pkey)
-      assert(node.parent.keys.size() <= MAX_LEAF_KEYS+1)
-      node.parent.childs[orig_i] = left
-      node.parent.childs.insert(orig_i+1, right)
-      left.parent = node.parent
+      right_keys = node.keys.slice!(LEAF_PROMO_INDEX..)
+      right = Leaf.new(*right_keys)
       right.parent = node.parent
+
+      # Which child# is @node for its parent?
+      node_child_i = 0
+      while node.object_id != node.parent.childs[node_child_i].object_id
+        node_child_i += 1
+      end
+
+      # XXX: Improve this explanation.
+      # The node_child_i child goes with the node_child_i separator.
+      # And the promo key should immediately follow the node_child_i separator.
+      node.parent.keys.insert(node_child_i, pkey)
+      assert(node.parent.keys.size() <= MAX_LEAF_KEYS+1)
+      node.parent.childs.insert(node_child_i+1, right)
 
       if node.parent.keys.size() == MAX_LEAF_KEYS
         promote!(tree, node.parent)
       end
     end
   else
-    raise "implement"
+    assert(node.is_a?(Internal))
+
+    pkey = node.keys[INTERNAL_PROMO_INDEX]
+    right_keys = node.keys.slice!((INTERNAL_PROMO_INDEX+1)..)
+    right_childs = node.childs.slice!((INTERNAL_PROMO_INDEX+1)..)
+    if node.object_id == tree.root.object_id
+      right = Internal.new(right_keys, right_childs)
+      right.childs.each {|c| c.parent = right}
+      node.keys.delete_at(INTERNAL_PROMO_INDEX)
+      left = node
+
+      tree.root = Internal.new([pkey], [left, right])
+      left.parent = tree.root
+      right.parent = tree.root
+    else
+      i = 0
+      while i < node.parent.keys.size()
+        if pkey < node.parent.keys[i]
+          break
+        end
+        i += 1
+      end
+      node.parent.keys.insert(i, pkey)
+      assert(node.parent.keys.size() <= MAX_LEAF_KEYS+1)
+
+      right = Internal.new(right_keys, right_childs)
+      right.childs.each {|c| c.parent = right}
+      right.parent = node.parent
+      node.parent.childs.insert(i+1, right)
+
+      # Fix the left.
+      node.keys.delete_at(INTERNAL_PROMO_INDEX)
+
+      if node.parent.keys.size() == MAX_LEAF_KEYS
+        promote!(tree, node.parent)
+      end
+    end
   end
 end
 
