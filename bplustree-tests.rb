@@ -3,7 +3,7 @@ require 'tempfile'
 require_relative 'bplustree'
 
 class Tests < Test::Unit::TestCase
-  def test_0
+  def test_insert
     # 10
     tree = Tree.new(Leaf.new(10))
     tree2 = Tree.new(Leaf.new(10))
@@ -28,6 +28,7 @@ class Tests < Test::Unit::TestCase
     insert!(tree, 1)
     tree2 = Tree.new(Internal.new([10], [Leaf.new(1, 5), Leaf.new(10, 20, 100)]))
     tree2.root.childs[0].parent = tree2.root.childs[1].parent = tree2.root
+    tree2.root.childs[0].next_leaf = tree2.root.childs[1]
     assert_equal(tree, tree2)
 
     #       10
@@ -48,6 +49,8 @@ class Tests < Test::Unit::TestCase
     tree2 = Tree.new(Internal.new(
       [4,10], [Leaf.new(1,2), Leaf.new(4,5,6), Leaf.new(10,20,100)]))
     tree2.root.childs[0].parent = tree2.root.childs[1].parent = tree2.root.childs[2].parent = tree2.root
+    tree2.root.childs[0].next_leaf = tree2.root.childs[1]
+    tree2.root.childs[1].next_leaf = tree2.root.childs[2]
     assert_equal(tree, tree2)
 
     #       [4,6,10]
@@ -58,6 +61,9 @@ class Tests < Test::Unit::TestCase
       [4,6,10],
       [Leaf.new(1,2), Leaf.new(4,5), Leaf.new(6,7,8), Leaf.new(10,20,100)]))
     tree2.root.childs[0].parent = tree2.root.childs[1].parent = tree2.root.childs[2].parent = tree2.root.childs[3].parent = tree2.root
+    tree2.root.childs[0].next_leaf = tree2.root.childs[1]
+    tree2.root.childs[1].next_leaf = tree2.root.childs[2]
+    tree2.root.childs[2].next_leaf = tree2.root.childs[3]
     assert_equal(tree, tree2)
 
     # TEST: Internal root overflow
@@ -72,7 +78,13 @@ class Tests < Test::Unit::TestCase
          Internal.new([10,25], [Leaf.new(6,7,8), Leaf.new(10,20), Leaf.new(25,26,100)])]))
     tree2.root.childs[0].parent = tree2.root.childs[1].parent = tree2.root
     tree2.root.childs[0].childs[0].parent = tree2.root.childs[0].childs[1].parent = tree2.root.childs[0]
+    tree2.root.childs[0].childs[0].next_leaf = tree2.root.childs[0].childs[1]
+    tree2.root.childs[0].childs[1].next_leaf = tree2.root.childs[1].childs[0]
+
     tree2.root.childs[1].childs[0].parent = tree2.root.childs[1].childs[1].parent = tree2.root.childs[1].childs[2].parent = tree2.root.childs[1]
+    tree2.root.childs[1].childs[0].next_leaf = tree2.root.childs[1].childs[1]
+    tree2.root.childs[1].childs[1].next_leaf = tree2.root.childs[1].childs[2]
+
     assert_equal(tree, tree2)
 
     # TEST: leaf node overflow
@@ -87,7 +99,14 @@ class Tests < Test::Unit::TestCase
          Internal.new([10,25,27], [Leaf.new(6,7,8), Leaf.new(10,20), Leaf.new(25,26), Leaf.new(27,28,100)])]))
     tree2.root.childs[0].parent = tree2.root.childs[1].parent = tree2.root
     tree2.root.childs[0].childs[0].parent = tree2.root.childs[0].childs[1].parent = tree2.root.childs[0]
+    tree2.root.childs[0].childs[0].next_leaf = tree2.root.childs[0].childs[1]
+    tree2.root.childs[0].childs[1].next_leaf = tree2.root.childs[1].childs[0]
+
     tree2.root.childs[1].childs[0].parent = tree2.root.childs[1].childs[1].parent = tree2.root.childs[1].childs[2].parent = tree2.root.childs[1].childs[3].parent  = tree2.root.childs[1]
+    tree2.root.childs[1].childs[0].next_leaf = tree2.root.childs[1].childs[1]
+    tree2.root.childs[1].childs[1].next_leaf = tree2.root.childs[1].childs[2]
+    tree2.root.childs[1].childs[2].next_leaf = tree2.root.childs[1].childs[3]
+
     assert_equal(tree, tree2)
 
     # TEST: Internal non-root overflow
@@ -104,9 +123,39 @@ class Tests < Test::Unit::TestCase
          Internal.new([25,27], [Leaf.new(12,13,20), Leaf.new(25,26), Leaf.new(27,28,100)])]))
     tree2.root.childs[0].parent = tree2.root.childs[1].parent = tree2.root.childs[2].parent = tree2.root
     tree2.root.childs[0].childs[0].parent = tree2.root.childs[0].childs[1].parent = tree2.root.childs[0]
+    tree2.root.childs[0].childs[0].next_leaf = tree2.root.childs[0].childs[1]
+    tree2.root.childs[0].childs[1].next_leaf = tree2.root.childs[1].childs[0]
+
     tree2.root.childs[1].childs[0].parent = tree2.root.childs[1].childs[1].parent = tree2.root.childs[1]
+    tree2.root.childs[1].childs[0].next_leaf = tree2.root.childs[1].childs[1]
+    tree2.root.childs[1].childs[1].next_leaf = tree2.root.childs[2].childs[0]
+
     tree2.root.childs[2].childs[0].parent = tree2.root.childs[2].childs[1].parent = tree2.root.childs[2].childs[2].parent = tree2.root.childs[2]
+    tree2.root.childs[2].childs[0].next_leaf = tree2.root.childs[2].childs[1]
+    tree2.root.childs[2].childs[1].next_leaf = tree2.root.childs[2].childs[2]
+
     assert_equal(tree, tree2)
+  end
+
+  def test_delete
+    # XXX: What should happen if we delete the only key of a tree?
+
+    tree = Tree.new(Leaf.new(10,20))
+    delete!(tree, 10)
+    tree2 = Tree.new(Leaf.new(20))
+    assert_equal(tree, tree2)
+
+    tree = Tree.new(Leaf.new(10, 20))
+    delete!(tree, 20)
+    tree2 = Tree.new(Leaf.new(10))
+    assert_equal(tree, tree2)
+
+    tree = Tree.new(Leaf.new(1, 2, 15, 20))
+    insert!(tree, 10)
+    tree2 = Tree.new(Leaf.new(1, 2, 15, 20))
+    insert!(tree2, 10)
+    tree2.root.childs[0].keys.slice!(1..)
+    delete!(tree, 2)
   end
 end
 

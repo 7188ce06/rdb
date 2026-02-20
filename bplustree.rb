@@ -1,6 +1,7 @@
 require 'test/unit/assertions'
 include Test::Unit::Assertions
 
+MIN_LEAF_KEYS = 2
 MAX_LEAF_KEYS = 4
 LEAF_PROMO_INDEX = 2
 INTERNAL_PROMO_INDEX = 1
@@ -17,7 +18,7 @@ class Tree
 end
 
 class Leaf
-  attr_accessor :keys, :parent
+  attr_accessor :keys, :parent, :next_leaf
 
   def initialize(*keys)
     # XXX: The min number of keys is actually 2 for a leaf.
@@ -26,7 +27,7 @@ class Leaf
   end
 
   def ==(other)
-    other.is_a?(Leaf) and @keys == other.keys and @parent == other.parent
+    other.is_a?(Leaf) and @keys == other.keys and @parent == other.parent and @next_leaf == other.next_leaf
   end
 end
 
@@ -86,11 +87,14 @@ def promote!(tree, node)
 
       tree.root = Internal.new([pkey], [left, right])
       left.parent = tree.root
+      left.next_leaf = right
       right.parent = tree.root
     else
       right_keys = node.keys.slice!(LEAF_PROMO_INDEX..)
       right = Leaf.new(*right_keys)
       right.parent = node.parent
+      right.next_leaf = node.next_leaf
+      node.next_leaf = right
 
       # Which child# is @node for its parent?
       node_child_i = 0
@@ -150,8 +154,57 @@ def promote!(tree, node)
   end
 end
 
-def delete(root, value)
+def delete!(tree, value)
+  return delete_helper!(tree, tree.root, value)
+end
 
+def delete_helper!(tree, node, value)
+  if node.is_a?(Leaf)
+    i = 0
+    while i < node.keys.size()
+      if value == node.keys[i]
+        break
+      end
+      i += 1
+    end
+
+    if i == node.keys.size()
+      return
+    end
+
+    node.keys.delete_at(i)
+    if node.object_id == tree.root.object_id
+      return
+    end
+
+    if i == 0
+      # XXX: This is wrong when the leaf is the leftmost one.
+      j = 0
+      while j < node.parent.keys.size()
+        if value == node.parent.keys[j]
+          break
+        end
+        j += 1
+      end
+
+      assert(j < node.parent.keys.size())
+      node.parent.keys[j] = node.keys[0]
+    end
+
+    if node.keys.size() < MIN_LEAF_KEYS
+      raise "implement"
+    end
+  else
+    assert(node.is_a?(Internal))
+    i = 0
+    while i < node.keys.size()
+      if value < node.keys[i]
+        break
+      end
+      i += 1
+    end
+    delete_helper!(tree, node.childs[i], value)
+  end
 end
 
 def find(root, value)
