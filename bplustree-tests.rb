@@ -139,6 +139,26 @@ class Tests < Test::Unit::TestCase
     tree2.root.childs[0].keys.delete_at(0)
     delete!(tree, 1)
     assert_equal(tree, tree2)
+
+    # underflow first leaf causing donation from right
+    tree = Tree.new(Leaf.new(1, 2, 15, 20))
+    insert!(tree, 10)
+    delete!(tree, 1)
+    tree2 = Tree.new(Internal.new([15], [Leaf.new(2,10), Leaf.new(15,20)]))
+    fix_tree!(tree2)
+    assert_equal(tree, tree2)
+
+    # underflow second leaf causing donation from left
+    tree = Tree.new(Leaf.new(1, 2, 15, 20))
+    insert!(tree, 10)
+    insert!(tree, 3)
+    delete!(tree, 10)
+    delete!(tree, 15)
+    tree2 = Tree.new(Internal.new([3], [Leaf.new(1,2), Leaf.new(3,20)]))
+    fix_tree!(tree2)
+    assert_equal(tree, tree2)
+
+    # underflow first leaf causing underflow of parent
   end
 end
 

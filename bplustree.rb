@@ -200,6 +200,55 @@ def delete_helper!(tree, node, value)
 
     if node.keys.size() < MIN_LEAF_KEYS
       # underflow
+      #
+      # first try to get a donation from the right or left.
+      i = 0
+      while i < node.parent.childs.size()
+        if node.parent.childs[i] == node
+          break
+        end
+        i += 1
+      end
+      assert(i < node.parent.childs.size())
+
+      # Can we take a donation from the right?
+      if i < node.parent.childs.size() - 1
+        rightsib = node.parent.childs[i+1]
+        assert(rightsib.is_a?(Leaf))
+        if rightsib.keys.size() > MIN_LEAF_KEYS
+          key = rightsib.keys.slice!(0)
+          node.keys.append(key)
+
+          # Fix the internal node.
+          # XXX: Instead, we could do an upwards search for it.
+          (inode, keyidx) = findInt(tree, key)
+          assert(inode.is_a?(Internal))
+          inode.keys[keyidx] = rightsib.keys[0]
+          return
+        end
+      end
+
+      # Can we take a donation from the left?
+      if i > 0
+        leftsib = node.parent.childs[i-1]
+        assert(leftsib.is_a?(Leaf))
+        if leftsib.keys.size() > MIN_LEAF_KEYS
+          key = leftsib.keys.slice!(-1)
+          node.keys.insert(0, key)
+
+          # Fix the internal node.
+          # XXX: Instead, we could do an upwards search for it.
+          (inode, keyidx) = findInt(tree, node.keys[1])
+          assert(inode.is_a?(Internal))
+          inode.keys[keyidx] = key
+          return
+        end
+      end
+
+      # Can we merge with the right?
+      raise "implement"
+
+      # Can we merge with the left?
       raise "implement"
     end
   else
@@ -212,6 +261,27 @@ def delete_helper!(tree, node, value)
       i += 1
     end
     delete_helper!(tree, node.childs[i], value)
+  end
+end
+
+def findInt(tree, key)
+  findIntHelper(tree.root, key)
+end
+
+def findIntHelper(node, key)
+  if node.is_a?(Leaf)
+    return nil
+  end
+
+  assert(node.is_a?(Internal))
+  i = 0
+  while i < node.keys.size()
+    if key == node.keys[i]
+      return [node, i]
+    elsif key < node.keys[i]
+      return findIntHelper(node.childs[i], key)
+    end
+    i += 1
   end
 end
 
