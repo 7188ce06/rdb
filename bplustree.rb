@@ -3,6 +3,8 @@ include Test::Unit::Assertions
 
 MIN_LEAF_KEYS = 2
 MAX_LEAF_KEYS = 4
+MIN_INTERNAL_CHILDREN = 2
+MAX_INTERNAL_CHILDREN = 4
 LEAF_PROMO_INDEX = 2
 INTERNAL_PROMO_INDEX = 1
 
@@ -246,10 +248,42 @@ def delete_helper!(tree, node, value)
       end
 
       # Can we merge with the right?
-      raise "implement"
+      if i < node.parent.childs.size() - 1
+        rightsib = node.parent.childs[i+1]
+        assert(rightsib.is_a?(Leaf))
+        if rightsib.keys.size() + node.keys.size() <= MAX_LEAF_KEYS
+          node.keys += rightsib.keys
+          node.next_leaf = rightsib.next_leaf
+          node.parent.childs.delete_at(i+1)
+          node.parent.keys.delete_at(i)
+
+          # Did we underflow the parent?
+          if node.parent.childs.size() < MIN_INTERNAL_CHILDREN
+            raise "implement"
+          end
+
+          return
+        end
+      end
 
       # Can we merge with the left?
-      raise "implement"
+      if i > 0
+        leftsib = node.parent.childs[i-1]
+        assert(leftsib.is_a?(Leaf))
+        if leftsib.keys.size() + node.keys.size() <= MAX_LEAF_KEYS
+          leftsib.keys += node.keys
+          leftsib.next_leaf = node.next_leaf
+          node.parent.childs.delete_at(i)
+          node.parent.keys.delete_at(i-1)
+
+          # Did we underflow the parent?
+          if node.parent.childs.size() < MIN_INTERNAL_CHILDREN
+            raise "implement"
+          end
+
+          return
+        end
+      end
     end
   else
     assert(node.is_a?(Internal))
