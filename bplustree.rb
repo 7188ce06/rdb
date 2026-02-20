@@ -178,20 +178,28 @@ def delete_helper!(tree, node, value)
     end
 
     if i == 0
-      # XXX: This is wrong when the leaf is the leftmost one.
-      j = 0
-      while j < node.parent.keys.size()
-        if value == node.parent.keys[j]
+      search_at = node.parent
+      while search_at != nil
+        j = 0
+        while j < search_at.keys.size()
+          if value == search_at.keys[j]
+            break
+          end
+          j += 1
+        end
+        if j < search_at.keys.size()
+          search_at.keys[j] = node.keys[0]
           break
         end
-        j += 1
+        search_at = search_at.parent
       end
-
-      assert(j < node.parent.keys.size())
-      node.parent.keys[j] = node.keys[0]
+      # HACK: Assumes that if we don't find an internal matching node then we
+      #       had been looking for a key that has the same value as the
+      #       leftmost key of the leftmost leaf.  This should be asserted on.
     end
 
     if node.keys.size() < MIN_LEAF_KEYS
+      # underflow
       raise "implement"
     end
   else

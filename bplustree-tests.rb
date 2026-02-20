@@ -140,22 +140,47 @@ class Tests < Test::Unit::TestCase
   def test_delete
     # XXX: What should happen if we delete the only key of a tree?
 
+    # Delete first key from root-leaf.
     tree = Tree.new(Leaf.new(10,20))
     delete!(tree, 10)
     tree2 = Tree.new(Leaf.new(20))
     assert_equal(tree, tree2)
 
+    # Delete last key from root-leaf.
     tree = Tree.new(Leaf.new(10, 20))
     delete!(tree, 20)
     tree2 = Tree.new(Leaf.new(10))
     assert_equal(tree, tree2)
 
+    # Delete non-first key from non-first non-root leaf.
     tree = Tree.new(Leaf.new(1, 2, 15, 20))
     insert!(tree, 10)
     tree2 = Tree.new(Leaf.new(1, 2, 15, 20))
     insert!(tree2, 10)
-    tree2.root.childs[0].keys.slice!(1..)
-    delete!(tree, 2)
+    tree2.root.childs[1].keys.delete_at(1)
+    delete!(tree, 15)
+    assert_equal(tree, tree2)
+
+    # Delete the first key from non-first non-root leaf.
+    tree = Tree.new(Leaf.new(1, 2, 15, 20))
+    insert!(tree, 10)
+    tree2 = Tree.new(Leaf.new(1, 2, 15, 20))
+    insert!(tree2, 10)
+    tree2.root.childs[1].keys.delete_at(0)
+    tree2.root.keys = [15]
+    delete!(tree, 10)
+    assert_equal(tree, tree2)
+
+    # Delete the first key from non-root first leaf.
+    tree = Tree.new(Leaf.new(1, 2, 15, 20))
+    insert!(tree, 10)
+    insert!(tree, 3)
+    tree2 = Tree.new(Leaf.new(1, 2, 15, 20))
+    insert!(tree2, 10)
+    insert!(tree2, 3)
+    tree2.root.childs[0].keys.delete_at(0)
+    delete!(tree, 1)
+    assert_equal(tree, tree2)
   end
 end
 
