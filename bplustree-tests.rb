@@ -27,8 +27,7 @@ class Tests < Test::Unit::TestCase
     # [1,5] [10,20,100]
     insert!(tree, 1)
     tree2 = Tree.new(Internal.new([10], [Leaf.new(1, 5), Leaf.new(10, 20, 100)]))
-    tree2.root.childs[0].parent = tree2.root.childs[1].parent = tree2.root
-    tree2.root.childs[0].next_leaf = tree2.root.childs[1]
+    fix_tree!(tree2)
     assert_equal(tree, tree2)
 
     #       10
@@ -48,9 +47,7 @@ class Tests < Test::Unit::TestCase
     insert!(tree, 4)
     tree2 = Tree.new(Internal.new(
       [4,10], [Leaf.new(1,2), Leaf.new(4,5,6), Leaf.new(10,20,100)]))
-    tree2.root.childs[0].parent = tree2.root.childs[1].parent = tree2.root.childs[2].parent = tree2.root
-    tree2.root.childs[0].next_leaf = tree2.root.childs[1]
-    tree2.root.childs[1].next_leaf = tree2.root.childs[2]
+    fix_tree!(tree2)
     assert_equal(tree, tree2)
 
     #       [4,6,10]
@@ -59,10 +56,7 @@ class Tests < Test::Unit::TestCase
     tree2 = Tree.new(Internal.new(
       [4,6,10],
       [Leaf.new(1,2), Leaf.new(4,5), Leaf.new(6,7,8), Leaf.new(10,20,100)]))
-    fix_parents!(tree2)
-    tree2.root.childs[0].next_leaf = tree2.root.childs[1]
-    tree2.root.childs[1].next_leaf = tree2.root.childs[2]
-    tree2.root.childs[2].next_leaf = tree2.root.childs[3]
+    fix_tree!(tree2)
     assert_equal(tree, tree2)
 
     # TEST: Internal root overflow
@@ -74,14 +68,7 @@ class Tests < Test::Unit::TestCase
       Internal.new([6],
         [Internal.new([4], [Leaf.new(1,2), Leaf.new(4, 5)]),
          Internal.new([10,25], [Leaf.new(6,7,8), Leaf.new(10,20), Leaf.new(25,26,100)])]))
-    fix_parents!(tree2)
-    tree2.root.childs[0].childs[0].parent = tree2.root.childs[0].childs[1].parent = tree2.root.childs[0]
-    tree2.root.childs[0].childs[0].next_leaf = tree2.root.childs[0].childs[1]
-    tree2.root.childs[0].childs[1].next_leaf = tree2.root.childs[1].childs[0]
-
-    tree2.root.childs[1].childs[0].next_leaf = tree2.root.childs[1].childs[1]
-    tree2.root.childs[1].childs[1].next_leaf = tree2.root.childs[1].childs[2]
-
+    fix_tree!(tree2)
     assert_equal(tree, tree2)
 
     # TEST: leaf node overflow
@@ -93,14 +80,7 @@ class Tests < Test::Unit::TestCase
       Internal.new([6],
         [Internal.new([4], [Leaf.new(1,2), Leaf.new(4, 5)]),
          Internal.new([10,25,27], [Leaf.new(6,7,8), Leaf.new(10,20), Leaf.new(25,26), Leaf.new(27,28,100)])]))
-    fix_parents!(tree2)
-    tree2.root.childs[0].childs[0].next_leaf = tree2.root.childs[0].childs[1]
-    tree2.root.childs[0].childs[1].next_leaf = tree2.root.childs[1].childs[0]
-
-    tree2.root.childs[1].childs[0].next_leaf = tree2.root.childs[1].childs[1]
-    tree2.root.childs[1].childs[1].next_leaf = tree2.root.childs[1].childs[2]
-    tree2.root.childs[1].childs[2].next_leaf = tree2.root.childs[1].childs[3]
-
+    fix_tree!(tree2)
     assert_equal(tree, tree2)
 
     # TEST: Internal non-root overflow
@@ -113,16 +93,7 @@ class Tests < Test::Unit::TestCase
         [Internal.new([4], [Leaf.new(1,2), Leaf.new(4, 5)]),
          Internal.new([10], [Leaf.new(6,7,8), Leaf.new(10,11)]),
          Internal.new([25,27], [Leaf.new(12,13,20), Leaf.new(25,26), Leaf.new(27,28,100)])]))
-    fix_parents!(tree2)
-    tree2.root.childs[0].childs[0].next_leaf = tree2.root.childs[0].childs[1]
-    tree2.root.childs[0].childs[1].next_leaf = tree2.root.childs[1].childs[0]
-
-    tree2.root.childs[1].childs[0].next_leaf = tree2.root.childs[1].childs[1]
-    tree2.root.childs[1].childs[1].next_leaf = tree2.root.childs[2].childs[0]
-
-    tree2.root.childs[2].childs[0].next_leaf = tree2.root.childs[2].childs[1]
-    tree2.root.childs[2].childs[1].next_leaf = tree2.root.childs[2].childs[2]
-
+    fix_tree!(tree2)
     assert_equal(tree, tree2)
   end
 
@@ -265,31 +236,79 @@ class TestsForHelpers < Test::Unit::TestCase
     assert_equal(get_next_leaf(leaf6), nil)
   end
 
-  def test_fix_next_leaf
+  def test_fix_next_leaf_links
     tree = Tree.new(Leaf.new(10))
     tree2 = Tree.new(Leaf.new(10))
     assert(get_next_leaf(tree.root) == nil)
     assert(get_first_leaf(tree) == tree.root)
-    fix_next_leaf!(tree)
+    fix_next_leaf_links!(tree)
     assert(get_next_leaf(tree.root) == nil)
     assert(get_first_leaf(tree) == tree.root)
     assert_equal(tree, tree2)
 
-    # tree = Tree.new(Internal.new([10], [Leaf.new(1, 5), Leaf.new(10, 20, 100)]))
-    # fix_parents!(tree)
-    # get_next_leaf(tree)
-=begin
-    fix_next_leaf!(tree)
-
-    tree2 = Tree.new(Leaf.new(10))
-    insert!(tree2, 20)
-    insert!(tree2, 5)
-    insert!(tree2, 1)
-    insert!(tree2, 100)
-
+    #      10
+    # [1,5] [10,20,100]
+    tree = Tree.new(Internal.new([10], [Leaf.new(1, 5), Leaf.new(10, 20, 100)]))
+    fix_parents!(tree)
+    fix_next_leaf_links!(tree)
+    insert!(tree2, 20, 5, 100, 1)
     assert_equal(tree, tree2)
-=end
 
+    #       [4,10]
+    # [1,2] [4,5,6] [10,20,100]
+    tree = Tree.new(Internal.new(
+      [4,10], [Leaf.new(1,2), Leaf.new(4,5,6), Leaf.new(10,20,100)]))
+    fix_parents!(tree)
+    fix_next_leaf_links!(tree)
+    insert!(tree2, 2, 6, 4)
+    assert_equal(tree, tree2)
+
+    #       [4,6,10]
+    # [1,2] [4,5] [6,7,8] [10,20,100]
+    tree = Tree.new(Internal.new(
+      [4,6,10],
+      [Leaf.new(1,2), Leaf.new(4,5), Leaf.new(6,7,8), Leaf.new(10,20,100)]))
+    fix_parents!(tree)
+    fix_next_leaf_links!(tree)
+    insert!(tree2, 7, 8)
+    assert_equal(tree, tree2)
+
+    #             [6]
+    #     [4]              [10,25]
+    # [1,2] [4,5]    [6,7,8] [10,20] [25,26,100]
+    tree = Tree.new(
+      Internal.new([6],
+        [Internal.new([4], [Leaf.new(1,2), Leaf.new(4, 5)]),
+         Internal.new([10,25], [Leaf.new(6,7,8), Leaf.new(10,20), Leaf.new(25,26,100)])]))
+    fix_parents!(tree)
+    fix_next_leaf_links!(tree)
+    insert!(tree2, 25, 26)
+    assert_equal(tree, tree2)
+
+    #             [6]
+    #     [4]              [10,25,27]
+    # [1,2] [4,5]    [6,7,8] [10,20] [25,26] [27,28,100]
+    tree = Tree.new(
+      Internal.new([6],
+        [Internal.new([4], [Leaf.new(1,2), Leaf.new(4, 5)]),
+         Internal.new([10,25,27], [Leaf.new(6,7,8), Leaf.new(10,20), Leaf.new(25,26), Leaf.new(27,28,100)])]))
+    fix_parents!(tree)
+    fix_next_leaf_links!(tree)
+    insert!(tree2, 27, 28)
+    assert_equal(tree, tree2)
+
+    #                       [6,12]
+    #     [4]              [10]                  [25,27]
+    # [1,2] [4,5]    [6,7,8] [10,11]      [12,13,20] [25,26] [27,28,100]
+    tree = Tree.new(
+      Internal.new([6,12],
+        [Internal.new([4], [Leaf.new(1,2), Leaf.new(4, 5)]),
+         Internal.new([10], [Leaf.new(6,7,8), Leaf.new(10,11)]),
+         Internal.new([25,27], [Leaf.new(12,13,20), Leaf.new(25,26), Leaf.new(27,28,100)])]))
+    fix_parents!(tree)
+    fix_next_leaf_links!(tree)
+    insert!(tree2, 11, 12, 13)
+    assert_equal(tree, tree2)
   end
 end
 
@@ -357,15 +376,16 @@ def fix_parents_helper!(node)
   end
 end
 
-def fix_next_leaf!(tree)
+def fix_next_leaf_links!(tree)
   leaf = get_first_leaf(tree)
 
   while (nleaf = get_next_leaf(leaf)) != nil
     leaf.next_leaf = nleaf
+    leaf = nleaf
   end
 end
 
 def fix_tree!(tree)
   fix_parents!(tree)
-  fix_next_leaf!(tree)
+  fix_next_leaf_links!(tree)
 end
