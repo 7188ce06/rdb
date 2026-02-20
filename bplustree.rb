@@ -45,8 +45,8 @@ class Internal
   end
 end
 
-def insert!(tree, value)
-  return insert_helper!(tree, tree.root, value)
+def insert!(tree, *values)
+  values.each {|v| insert_helper!(tree, tree.root, v)}
 end
 
 def insert_helper!(tree, node, value)

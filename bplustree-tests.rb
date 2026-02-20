@@ -55,8 +55,7 @@ class Tests < Test::Unit::TestCase
 
     #       [4,6,10]
     # [1,2] [4,5] [6,7,8] [10,20,100]
-    insert!(tree, 7)
-    insert!(tree, 8)
+    insert!(tree, 7, 8)
     tree2 = Tree.new(Internal.new(
       [4,6,10],
       [Leaf.new(1,2), Leaf.new(4,5), Leaf.new(6,7,8), Leaf.new(10,20,100)]))
@@ -70,8 +69,7 @@ class Tests < Test::Unit::TestCase
     #             [6]
     #     [4]              [10,25]
     # [1,2] [4,5]    [6,7,8] [10,20] [25,26,100]
-    insert!(tree, 25)
-    insert!(tree, 26)
+    insert!(tree, 25, 26)
     tree2 = Tree.new(
       Internal.new([6],
         [Internal.new([4], [Leaf.new(1,2), Leaf.new(4, 5)]),
@@ -90,8 +88,7 @@ class Tests < Test::Unit::TestCase
     #             [6]
     #     [4]              [10,25,27]
     # [1,2] [4,5]    [6,7,8] [10,20] [25,26] [27,28,100]
-    insert!(tree, 27)
-    insert!(tree, 28)
+    insert!(tree, 27, 28)
     tree2 = Tree.new(
       Internal.new([6],
         [Internal.new([4], [Leaf.new(1,2), Leaf.new(4, 5)]),
@@ -110,9 +107,7 @@ class Tests < Test::Unit::TestCase
     #                       [6,12]
     #     [4]              [10]                  [25,27]
     # [1,2] [4,5]    [6,7,8] [10,11]      [12,13,20] [25,26] [27,28,100]
-    insert!(tree, 11)
-    insert!(tree, 12)
-    insert!(tree, 13)
+    insert!(tree, 11, 12, 13)
     tree2 = Tree.new(
       Internal.new([6,12],
         [Internal.new([4], [Leaf.new(1,2), Leaf.new(4, 5)]),
@@ -167,11 +162,9 @@ class Tests < Test::Unit::TestCase
 
     # Delete the first key from non-root first leaf.
     tree = Tree.new(Leaf.new(1, 2, 15, 20))
-    insert!(tree, 10)
-    insert!(tree, 3)
+    insert!(tree, 10, 3)
     tree2 = Tree.new(Leaf.new(1, 2, 15, 20))
-    insert!(tree2, 10)
-    insert!(tree2, 3)
+    insert!(tree2, 10, 3)
     tree2.root.childs[0].keys.delete_at(0)
     delete!(tree, 1)
     assert_equal(tree, tree2)
@@ -189,16 +182,119 @@ class TestsForHelpers < Test::Unit::TestCase
     tree.root.childs[0].next_leaf = tree.root.childs[1]
     fix_parents!(tree)
     tree2 = Tree.new(Leaf.new(10))
+    insert!(tree2, 20, 5, 1, 100)
+    assert_equal(tree, tree2)
+  end
+
+  def test_get_leaf
+    tree = Tree.new(Leaf.new(10))
+    assert_equal(get_first_leaf(tree), tree.root)
+    assert_equal(get_next_leaf(get_first_leaf(tree)), nil)
+
+    #      10
+    # [1,5] [10,20,100]
+    insert!(tree, 20, 5, 100, 1)
+    assert_equal(get_first_leaf(tree), tree.root.childs[0])
+    assert_equal(get_next_leaf(get_first_leaf(tree)), tree.root.childs[1])
+
+    #       [4,6,10]
+    # [1,2] [4,5] [6,7,8] [10,20,100]
+    insert!(tree, 2, 6, 4, 7, 8)
+    leaf0 = get_first_leaf(tree)
+    assert_equal(leaf0, tree.root.childs[0])
+    leaf1 = get_next_leaf(leaf0)
+    assert_equal(leaf1, tree.root.childs[1])
+    leaf2 = get_next_leaf(leaf1)
+    assert_equal(leaf2, tree.root.childs[2])
+    leaf3 = get_next_leaf(leaf2)
+    assert_equal(leaf3, tree.root.childs[3])
+    assert_equal(get_next_leaf(leaf3), nil)
+
+    #             [6]
+    #     [4]              [10,25]
+    # [1,2] [4,5]    [6,7,8] [10,20] [25,26,100]
+    insert!(tree, 25, 26)
+    leaf0 = get_first_leaf(tree)
+    assert_equal(leaf0, tree.root.childs[0].childs[0])
+    leaf1 = get_next_leaf(leaf0)
+    assert_equal(leaf1, tree.root.childs[0].childs[1])
+    leaf2 = get_next_leaf(leaf1)
+    assert_equal(leaf2, tree.root.childs[1].childs[0])
+    leaf3 = get_next_leaf(leaf2)
+    assert_equal(leaf3, tree.root.childs[1].childs[1])
+    leaf4 = get_next_leaf(leaf3)
+    assert_equal(leaf4, tree.root.childs[1].childs[2])
+    assert_equal(get_next_leaf(leaf4), nil)
+
+    #             [6]
+    #     [4]              [10,25,27]
+    # [1,2] [4,5]    [6,7,8] [10,20] [25,26] [27,28,100]
+    insert!(tree, 27, 28)
+    leaf0 = get_first_leaf(tree)
+    assert_equal(leaf0, tree.root.childs[0].childs[0])
+    leaf1 = get_next_leaf(leaf0)
+    assert_equal(leaf1, tree.root.childs[0].childs[1])
+    leaf2 = get_next_leaf(leaf1)
+    assert_equal(leaf2, tree.root.childs[1].childs[0])
+    leaf3 = get_next_leaf(leaf2)
+    assert_equal(leaf3, tree.root.childs[1].childs[1])
+    leaf4 = get_next_leaf(leaf3)
+    assert_equal(leaf4, tree.root.childs[1].childs[2])
+    leaf5 = get_next_leaf(leaf4)
+    assert_equal(leaf5, tree.root.childs[1].childs[3])
+    assert_equal(get_next_leaf(leaf5), nil)
+
+    #                       [6,12]
+    #     [4]              [10]                  [25,27]
+    # [1,2] [4,5]    [6,7,8] [10,11]      [12,13,20] [25,26] [27,28,100]
+    insert!(tree, 11, 12, 13)
+    leaf0 = get_first_leaf(tree)
+    assert_equal(leaf0, tree.root.childs[0].childs[0])
+    leaf1 = get_next_leaf(leaf0)
+    assert_equal(leaf1, tree.root.childs[0].childs[1])
+    leaf2 = get_next_leaf(leaf1)
+    assert_equal(leaf2, tree.root.childs[1].childs[0])
+    leaf3 = get_next_leaf(leaf2)
+    assert_equal(leaf3, tree.root.childs[1].childs[1])
+    leaf4 = get_next_leaf(leaf3)
+    assert_equal(leaf4, tree.root.childs[2].childs[0])
+    leaf5 = get_next_leaf(leaf4)
+    assert_equal(leaf5, tree.root.childs[2].childs[1])
+    leaf6 = get_next_leaf(leaf5)
+    assert_equal(leaf6, tree.root.childs[2].childs[2])
+    assert_equal(get_next_leaf(leaf6), nil)
+  end
+
+  def test_fix_next_leaf
+    tree = Tree.new(Leaf.new(10))
+    tree2 = Tree.new(Leaf.new(10))
+    assert(get_next_leaf(tree.root) == nil)
+    assert(get_first_leaf(tree) == tree.root)
+    fix_next_leaf!(tree)
+    assert(get_next_leaf(tree.root) == nil)
+    assert(get_first_leaf(tree) == tree.root)
+    assert_equal(tree, tree2)
+
+    # tree = Tree.new(Internal.new([10], [Leaf.new(1, 5), Leaf.new(10, 20, 100)]))
+    # fix_parents!(tree)
+    # get_next_leaf(tree)
+=begin
+    fix_next_leaf!(tree)
+
+    tree2 = Tree.new(Leaf.new(10))
     insert!(tree2, 20)
     insert!(tree2, 5)
     insert!(tree2, 1)
     insert!(tree2, 100)
+
     assert_equal(tree, tree2)
+=end
+
   end
 end
 
 def get_first_leaf(tree)
-  return get_first_leaf_helper(root)
+  return get_first_leaf_helper(tree.root)
 end
 
 def get_first_leaf_helper(node)
@@ -211,35 +307,29 @@ end
 
 # Assumes that parent links are setup.
 def get_next_leaf(leaf)
-  if parent.nil?
-    return nil
-  end
-
   # go up the necessary amount
   node = leaf
-  while !node.nil?
+  descend_from = nil
+  while !node.parent.nil?
     i = 0
-    while i < node.parent.keys.size()
-      if node.parent.keys[i] == node.keys[0]
+    while i < node.parent.childs.size()
+      if node.parent.childs[i] == node
         break
       end
       i += 1
     end
+    assert(i < node.parent.childs.size())
 
-    if i == leaf.parent.keys.size()
-      i = 1
-    else
-      i += 1
-    end
-
-    if i < node.parent.childs.size()
-      descend_from = node.parent.childs[i]
+    if i+1 < node.parent.childs.size()
+      descend_from = node.parent.childs[i+1]
       break
     end
 
     node = node.parent
   end
-  raise "bogus" if node.nil? or descend_from.nil?
+  if descend_from.nil?
+    return nil
+  end
 
   # descend
   while true
@@ -267,7 +357,7 @@ def fix_parents_helper!(node)
   end
 end
 
-def fix_next_leaf_links!(tree)
+def fix_next_leaf!(tree)
   leaf = get_first_leaf(tree)
 
   while (nleaf = get_next_leaf(leaf)) != nil
@@ -277,5 +367,5 @@ end
 
 def fix_tree!(tree)
   fix_parents!(tree)
-  fix_next_leaf_links!(tree)
+  fix_next_leaf!(tree)
 end
