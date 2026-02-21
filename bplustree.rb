@@ -377,6 +377,34 @@ def handle_internal_underflow!(tree, node)
         return
       end
     end
+
+    # Can we merge with the right?
+    # XXX: This is buggy.
+    if i < node.parent.childs.size() - 1
+      rightsib = node.parent.childs[i+1]
+      assert(rightsib.is_a?(Internal))
+      if node.childs.size() + rightsib.childs.size() <= MAX_INTERNAL_CHILDREN
+        # XXX: Make this work when node has more than one child.
+        rightsib.childs.insert(0, node.childs[0])
+        rightsib.childs[0].parent = rightsib
+        node.parent.childs.delete_at(i)
+        node.parent.keys.delete_at(i)
+        rightsib.keys.insert(0, least_key_in_subtree(rightsib.childs[1]))
+
+        if node.parent.childs.size < MIN_INTERNAL_CHILDREN
+          handle_internal_underflow!(tree, node.parent)
+        end
+      end
+    end
+
+    # Can we merge with the left?
+    if i > 0
+      leftsib = node.parent.childs[i-1]
+      assert(leftsib.is_a?(Internal))
+      if node.childs.size() + leftsib.childs.size() <= MAX_INTERNAL_CHILDREN
+        raise "implement"
+      end
+    end
   end
 end
 

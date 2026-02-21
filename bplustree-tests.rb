@@ -200,6 +200,19 @@ class Tests < Test::Unit::TestCase
     fix_tree!(tree2)
     assert_equal(tree, tree2)
 
+    # underflow first leaf causing right merge that underflows non-root parent.
+    # it then merges to the rigt.
+    tree = Tree.new(Internal.new([20,40],
+      [Internal.new([10], [Leaf.new(1,2), Leaf.new(10,11)]),
+       Internal.new([30], [Leaf.new(20,21), Leaf.new(30,31)]),
+       Internal.new([50], [Leaf.new(40,41), Leaf.new(50,51)])]))
+    fix_tree!(tree)
+    delete!(tree, 11)
+    tree2 = Tree.new(Internal.new([40],
+      [Internal.new([20,30], [Leaf.new(1,2,10), Leaf.new(20,21), Leaf.new(30,31)]),
+       Internal.new([50], [Leaf.new(40,41), Leaf.new(50,51)])]))
+    fix_tree!(tree2)
+    assert_equal(tree, tree2)
   end
 end
 
