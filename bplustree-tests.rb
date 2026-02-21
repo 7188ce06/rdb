@@ -227,6 +227,8 @@ class Tests < Test::Unit::TestCase
        Internal.new([30,40], [Leaf.new(20,21), Leaf.new(30,31), Leaf.new(40,41,50)])]))
     fix_tree!(tree2)
     assert_equal(tree, tree2)
+
+    # XXX: Test underflowing root.
   end
 end
 
