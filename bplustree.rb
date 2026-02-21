@@ -398,6 +398,7 @@ def handle_internal_underflow!(tree, node)
     end
 
     # Can we merge with the left?
+    # XXX: This is buggy.
     if i > 0
       leftsib = node.parent.childs[i-1]
       assert(leftsib.is_a?(Internal))
