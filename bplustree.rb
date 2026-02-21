@@ -411,7 +411,7 @@ def handle_internal_underflow!(tree, node)
         node.parent.keys.delete_at(i-1)
 
         if node.parent.childs.size < MIN_INTERNAL_CHILDREN
-          handle_leaf_underflow!(tree, node.parent)
+          handle_internal_underflow!(tree, node.parent)
         end
       end
     end
