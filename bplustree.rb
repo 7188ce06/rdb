@@ -387,9 +387,9 @@ def handle_internal_underflow!(tree, node)
         # XXX: Make this work when node has more than one child.
         rightsib.childs.insert(0, node.childs[0])
         rightsib.childs[0].parent = rightsib
+        rightsib.keys.insert(0, least_key_in_subtree(rightsib.childs[1]))
         node.parent.childs.delete_at(i)
         node.parent.keys.delete_at(i)
-        rightsib.keys.insert(0, least_key_in_subtree(rightsib.childs[1]))
 
         if node.parent.childs.size < MIN_INTERNAL_CHILDREN
           handle_internal_underflow!(tree, node.parent)
@@ -402,7 +402,16 @@ def handle_internal_underflow!(tree, node)
       leftsib = node.parent.childs[i-1]
       assert(leftsib.is_a?(Internal))
       if node.childs.size() + leftsib.childs.size() <= MAX_INTERNAL_CHILDREN
-        raise "implement"
+        # XXX: Make this work when node has more than one child.
+        leftsib.childs.insert(-1, node.childs[0])
+        leftsib.childs[-1].parent = leftsib
+        leftsib.keys.insert(-1, least_key_in_subtree(leftsib.childs[-1]))
+        node.parent.childs.delete_at(i)
+        node.parent.keys.delete_at(i-1)
+
+        if node.parent.childs.size < MIN_INTERNAL_CHILDREN
+          handle_leaf_underflow!(tree, node.parent)
+        end
       end
     end
   end
