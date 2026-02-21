@@ -354,7 +354,29 @@ def handle_internal_underflow!(tree, node)
       end
     end
 
-    raise "implement"
+    # Can we take a donation from the left?
+    if i > 0
+      leftsib = node.parent.childs[i-1]
+      assert(leftsib.is_a?(Internal))
+      if leftsib.childs.size() > MIN_LEAF_KEYS
+        # Accept the donation.
+        child = leftsib.childs.slice!(-1)
+        node.childs.insert(0, child)
+        child.parent = node
+        keyB = least_key_in_subtree(node.childs[1])
+        node.keys.insert(0, keyB)
+
+        # Fix up the sibling.
+        leftsib.keys.delete_at(-1)
+
+        # Fix the internal node.
+        keyA = least_key_in_subtree(child)
+        (inode, keyidx) = findInt(tree, keyB)
+        assert(node.is_a?(Internal))
+        inode.keys[keyidx] = keyA
+        return
+      end
+    end
   end
 end
 

@@ -186,6 +186,20 @@ class Tests < Test::Unit::TestCase
        Internal.new([40], [Leaf.new(30,31), Leaf.new(40,41)])]))
     fix_tree!(tree2)
     assert_equal(tree, tree2)
+
+    # underflow last leaf causing left merge that underflows non-root parent.
+    # it then accepts a donation from the left.
+    tree = Tree.new(Internal.new([30],
+      [Internal.new([10, 20], [Leaf.new(1,2), Leaf.new(10, 11), Leaf.new(20, 21)]),
+       Internal.new([40], [Leaf.new(30,31), Leaf.new(40,41)])]))
+    fix_tree!(tree)
+    delete!(tree, 40)
+    tree2 = Tree.new(Internal.new([20],
+      [Internal.new([10], [Leaf.new(1,2), Leaf.new(10,11)]),
+       Internal.new([30], [Leaf.new(20,21), Leaf.new(30,31,41)])]))
+    fix_tree!(tree2)
+    assert_equal(tree, tree2)
+
   end
 end
 
