@@ -90,10 +90,14 @@ def insert_helper!(tree, node, value)
     assert(node.is_a?(Internal))
     i = 0
     while i < node.keys.size()
-      if value < node.keys[i]
+      if value == node.keys[i]
+        raise DuplicateKeyError.new
+      elsif value > node.keys[i]
+        i += 1
+      else
+        assert(value < node.keys[i])
         break
       end
-      i += 1
     end
     insert_helper!(tree, node.childs[i], value)
   end
@@ -113,26 +117,32 @@ def promote_from_leaf!(tree, node)
     left.parent = tree.root
     right.parent = tree.root
   else
-    right_keys = node.keys.slice!(LEAF_PROMO_INDEX..)
-    right = Leaf.new(*right_keys)
-    right.parent = node.parent
-    right.next_leaf = node.next_leaf
-    node.next_leaf = right
-
-    # Which child# is @node for its parent?
+    # What index is @node at for its parent?
     node_child_i = 0
     while node.object_id != node.parent.childs[node_child_i].object_id
       node_child_i += 1
     end
 
+    right_keys = node.keys.slice!(LEAF_PROMO_INDEX..)
+    right = Leaf.new(*right_keys)
+    left = node
+    right.next_leaf = left.next_leaf
+    left.next_leaf = right
+    right.parent = node.parent
+
     # XXX: Improve this explanation.
+    # @left will occupy the same position that @node occupied in the parent's
+    # child array.  @right will occupy the subsequent position.  The first
+    # element of @right must also become a key for the parent that comes after
+    # the key which is the first element of @left.
     # The node_child_i child goes with the node_child_i separator.
     # And the promo key should immediately follow the node_child_i separator.
-    node.parent.keys.insert(node_child_i, pkey)
-    assert(node.parent.keys.size() <= MAX_LEAF_KEYS+1)
     node.parent.childs.insert(node_child_i+1, right)
+    node.parent.keys.insert(node_child_i, pkey)
+    assert(node.parent.keys.size() + 1 == node.parent.childs.size())
+    assert(node.parent.childs.size() <= MAX_INTERNAL_CHILDREN+1)
 
-    if node.parent.keys.size() == MAX_LEAF_KEYS
+    if node.parent.childs.size() > MAX_INTERNAL_CHILDREN
       promote_from_internal!(tree, node.parent)
     end
   end
