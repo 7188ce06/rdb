@@ -3,15 +3,30 @@ require 'tempfile'
 require_relative 'bplustree'
 
 class Tests < Test::Unit::TestCase
-  def test_insert
-    # 10
-    tree = Tree.new(Leaf.new(10))
-    tree2 = Tree.new(Leaf.new(10))
+  def test_insert_empty_tree
+    emptyA = Tree.new()
+    emptyB = Tree.new()
+    assert_equal(emptyA, emptyB)
+    assert(emptyA.root.is_a?(Leaf))
+    assert_equal(emptyA.root.keys, [])
 
+    insert!(emptyA, 10)
+    insert!(emptyB, 10)
+    assert_equal(emptyA, emptyB)
+    assert(emptyA.root.is_a?(Leaf))
+    assert_equal(emptyA.root.keys, [10])
+
+    assert_raises(DuplicateKeyError) {insert!(emptyA, 10)}
+  end
+
+  def test_insert
     # 10, 20
+    tree = Tree.new(Leaf.new(10))
     insert!(tree, 20)
+    tree2 = Tree.new(Leaf.new(10))
     tree2.root.keys.append(20)
     assert_equal(tree, tree2)
+    assert_raises(DuplicateKeyError) {insert!(tree, 20)}
 
     # 5, 10, 20
     insert!(tree, 5)
@@ -23,6 +38,7 @@ class Tests < Test::Unit::TestCase
     tree2.root.keys.append(100)
     assert_equal(tree, tree2)
 
+    # TEST: Overflow when root is a leaf.
     #      10
     # [1,5] [10,20,100]
     insert!(tree, 1)

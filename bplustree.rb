@@ -8,10 +8,16 @@ MAX_INTERNAL_CHILDREN = 4
 LEAF_PROMO_INDEX = 2
 INTERNAL_PROMO_INDEX = 1
 
+# The empty tree (ie, the tree with no keys) is the tree with a root node that
+# is an empty leaf.
 class Tree
   attr_accessor :root
-  def initialize(root)
-    @root = root
+  def initialize(root=nil)
+    if root.nil?
+      @root = Leaf.new()
+    else
+      @root = root
+    end
   end
 
   def ==(other)
@@ -23,8 +29,6 @@ class Leaf
   attr_accessor :keys, :parent, :next_leaf
 
   def initialize(*keys)
-    # XXX: The min number of keys is actually 2 for a leaf.
-    raise "error" if keys.size() == 0
     @keys = keys
   end
 
@@ -47,18 +51,34 @@ class Internal
   end
 end
 
+class DuplicateKeyError < StandardError
+end
+
+# There are three subcases when the root node is a leaf.
+# (1) root node is empty.
+# (2) root node is non-empty, but not packed.
+# (3) root node is packed.
+#
+# There are N subcases when the root node is not a leaf.
+# (1) The relevant leaf is non-empty, but not packed.
+# (2) The relevant leaf is packed. (Is the parent also packed? grandparent?)
 def insert!(tree, *values)
   values.each {|v| insert_helper!(tree, tree.root, v)}
 end
 
 def insert_helper!(tree, node, value)
+  assert(is_sorted(node.keys))
   if node.is_a?(Leaf)
     i = 0
     while i < node.keys.size()
-      if value < node.keys[i]
+      if value == node.keys[i]
+        raise DuplicateKeyError.new
+      elsif value > node.keys[i]
+        i += 1
+      else
+        assert(value < node.keys[i])
         break
       end
-      i += 1
     end
     node.keys.insert(i, value)
     assert(node.keys.size() <= MAX_LEAF_KEYS+1)
@@ -81,15 +101,16 @@ end
 
 def promote_from_leaf!(tree, node)
   assert(node.is_a?(Leaf))
+  assert(is_sorted(node.keys))
   pkey = node.keys[LEAF_PROMO_INDEX]
   if node.object_id == tree.root.object_id
     right_keys = node.keys.slice!(LEAF_PROMO_INDEX..)
     right = Leaf.new(*right_keys)
     left = node
+    left.next_leaf = right
 
     tree.root = Internal.new([pkey], [left, right])
     left.parent = tree.root
-    left.next_leaf = right
     right.parent = tree.root
   else
     right_keys = node.keys.slice!(LEAF_PROMO_INDEX..)
@@ -455,4 +476,8 @@ end
 
 def findRange(root, low, high)
 
+end
+
+def is_sorted(xs)
+  xs == xs.sort
 end
