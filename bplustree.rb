@@ -117,6 +117,8 @@ def promote_from_leaf!(tree, node)
     left.parent = tree.root
     right.parent = tree.root
   else
+    assert(!node.parent.nil?)
+
     # What index is @node at for its parent?
     node_child_i = 0
     while node.object_id != node.parent.childs[node_child_i].object_id
@@ -130,13 +132,10 @@ def promote_from_leaf!(tree, node)
     left.next_leaf = right
     right.parent = node.parent
 
-    # XXX: Improve this explanation.
     # @left will occupy the same position that @node occupied in the parent's
     # child array.  @right will occupy the subsequent position.  The first
     # element of @right must also become a key for the parent that comes after
     # the key which is the first element of @left.
-    # The node_child_i child goes with the node_child_i separator.
-    # And the promo key should immediately follow the node_child_i separator.
     node.parent.childs.insert(node_child_i+1, right)
     node.parent.keys.insert(node_child_i, pkey)
     assert(node.parent.keys.size() + 1 == node.parent.childs.size())

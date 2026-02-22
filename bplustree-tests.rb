@@ -113,6 +113,45 @@ class Tests < Test::Unit::TestCase
     assert_equal(tree, tree2)
   end
 
+  def test_insert_overflow_into_height_four_tree
+    #                          [40,60,90]
+    #     [25]            [50]               [75]                      [125,127,150]
+    # [1,2] [25,26] [40,41]  [50,51]  [60,61]    [75,76]    [90,91] [125,126] [127,128, 129] [150,151,152,153]
+    tree = Tree.new(
+      Internal.new([40,60,90],
+        [Internal.new([25], [Leaf.new(1,2), Leaf.new(25,26)]),
+         Internal.new([50], [Leaf.new(40,41), Leaf.new(50,51)]),
+         Internal.new([75], [Leaf.new(60,61), Leaf.new(75,76)]),
+         Internal.new([125,150], [Leaf.new(90,91), Leaf.new(125,126,127,128), Leaf.new(150,151,152,153)])]))
+    fix_tree!(tree)
+    insert!(tree, 129)
+    tree2 = Tree.new(
+      Internal.new([40,60,90],
+        [Internal.new([25], [Leaf.new(1,2), Leaf.new(25,26)]),
+         Internal.new([50], [Leaf.new(40,41), Leaf.new(50,51)]),
+         Internal.new([75], [Leaf.new(60,61), Leaf.new(75,76)]),
+         Internal.new([125,127,150], [Leaf.new(90,91), Leaf.new(125,126), Leaf.new(127,128,129), Leaf.new(150,151,152,153)])]))
+    fix_tree!(tree2)
+    assert_equal(tree, tree2)
+
+    #                             [60]
+    #            [40]                                  [90,127]
+    #     [25]            [50]               [75]                    [125]                              [150,152]
+    # [1,2] [25,26] [40,41]  [50,51]  [60,61]    [75,76]        [90,91] [125,126]         [127,128, 129] [150,151] [152,153,154]
+    insert!(tree, 154)
+    tree2 = Tree.new(
+      Internal.new([60],
+        [Internal.new([40],
+          [Internal.new([25], [Leaf.new(1,2), Leaf.new(25,26)]),
+           Internal.new([50], [Leaf.new(40,41), Leaf.new(50,51)])]),
+         Internal.new([90,127],
+          [Internal.new([75], [Leaf.new(60,61), Leaf.new(75,76)]),
+           Internal.new([125], [Leaf.new(90,91), Leaf.new(125,126)]),
+           Internal.new([150,152], [Leaf.new(127,128,129), Leaf.new(150,151), Leaf.new(152,153,154)])])]))
+    fix_tree!(tree2)
+    assert_equal(tree, tree2)
+  end
+
   def test_delete
     # XXX: What should happen if we delete the only key of a tree?
 
