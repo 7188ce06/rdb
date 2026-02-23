@@ -383,7 +383,7 @@ def handle_internal_underflow!(tree, node)
 
         # Fix the internal node.
         keyB = least_key_in_subtree(rightsib.childs[0])
-        # XXX: Instead, we could do an upwards search for it.
+        # XXX: We could do an upwards search instead.
         (inode, keyidx) = findInt(tree, keyA)
         assert(inode.is_a?(Internal))
         inode.keys[keyidx] = keyB
