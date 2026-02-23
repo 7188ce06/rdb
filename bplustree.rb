@@ -203,6 +203,7 @@ def delete_helper!(tree, node, value)
       i += 1
     end
 
+    # Return if the leaf doesn't have the key.
     if i == node.keys.size()
       return
     end
@@ -212,6 +213,7 @@ def delete_helper!(tree, node, value)
       return
     end
 
+    # XXX: Is this right?
     if i == 0
       search_at = node.parent
       while search_at != nil
@@ -250,9 +252,11 @@ def delete_helper!(tree, node, value)
 end
 
 def handle_leaf_underflow!(tree, node)
+  assert(node.is_a?(Leaf))
   assert(tree.root.object_id != node.object_id)
 
   # first try to get a donation from the right or left.
+  # then try to merge.
   i = 0
   while i < node.parent.childs.size()
     if node.parent.childs[i] == node
@@ -271,9 +275,10 @@ def handle_leaf_underflow!(tree, node)
       node.keys.append(key)
 
       # Fix the internal node.
-      # XXX: Instead, we could do an upwards search for it.
+      # XXX: We could do an upwards search instead.
       (inode, keyidx) = findInt(tree, key)
       assert(inode.is_a?(Internal))
+      assert_equal(inode.keys[keyidx], key)
       inode.keys[keyidx] = rightsib.keys[0]
       return
     end
@@ -288,9 +293,10 @@ def handle_leaf_underflow!(tree, node)
       node.keys.insert(0, key)
 
       # Fix the internal node.
-      # XXX: Instead, we could do an upwards search for it.
+      # XXX: We could do an upwards search instead.
       (inode, keyidx) = findInt(tree, node.keys[1])
       assert(inode.is_a?(Internal))
+      assert_equal(inode.keys[keyidx], node.keys[1])
       inode.keys[keyidx] = key
       return
     end
@@ -346,6 +352,7 @@ def handle_internal_underflow!(tree, node)
   if tree.root.object_id == node.object_id
     assert_equal(node.childs.size(), 1)
     tree.root = node.childs[0]
+    tree.root.parent = nil
     assert(tree.root.is_a?(Leaf))
     return
   else

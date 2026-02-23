@@ -152,8 +152,14 @@ class Tests < Test::Unit::TestCase
     assert_equal(tree, tree2)
   end
 
-  def test_delete
-    # XXX: What should happen if we delete the only key of a tree?
+  def test_delete_for_height_one
+    # Delete the tree's only key.
+    tree = Tree.new(Leaf.new(10))
+    delete!(tree, 10)
+    tree2 = Tree.new()
+    assert_equal(tree, tree2)
+    assert(tree.root.is_a?(Leaf))
+    assert_equal(tree.root.keys, [])
 
     # Delete first key from root-leaf.
     tree = Tree.new(Leaf.new(10,20))
@@ -166,33 +172,39 @@ class Tests < Test::Unit::TestCase
     delete!(tree, 20)
     tree2 = Tree.new(Leaf.new(10))
     assert_equal(tree, tree2)
+  end
 
-    # Delete non-first key from non-first non-root leaf.
-    tree = Tree.new(Leaf.new(1, 2, 15, 20))
-    insert!(tree, 10)
-    tree2 = Tree.new(Leaf.new(1, 2, 15, 20))
-    insert!(tree2, 10)
-    tree2.root.childs[1].keys.delete_at(1)
-    delete!(tree, 15)
-    assert_equal(tree, tree2)
-
-    # Delete the first key from non-first non-root leaf.
-    tree = Tree.new(Leaf.new(1, 2, 15, 20))
-    insert!(tree, 10)
-    tree2 = Tree.new(Leaf.new(1, 2, 15, 20))
-    insert!(tree2, 10)
-    tree2.root.childs[1].keys.delete_at(0)
-    tree2.root.keys = [15]
-    delete!(tree, 10)
-    assert_equal(tree, tree2)
-
-    # Delete the first key from non-root first leaf.
+  def test_delete_for_height_two
+    # Delete the first key from the first leaf.
     tree = Tree.new(Leaf.new(1, 2, 15, 20))
     insert!(tree, 10, 3)
-    tree2 = Tree.new(Leaf.new(1, 2, 15, 20))
-    insert!(tree2, 10, 3)
-    tree2.root.childs[0].keys.delete_at(0)
     delete!(tree, 1)
+    tree2 = Tree.new(Internal.new([10], [Leaf.new(2,3), Leaf.new(10,15,20)]))
+    fix_tree!(tree2)
+    assert_equal(tree, tree2)
+
+    # Delete non-first key from the first leaf.
+    tree = Tree.new(Leaf.new(1, 2, 15, 20))
+    insert!(tree, 10, 3)
+    delete!(tree, 2)
+    tree2 = Tree.new(Internal.new([10], [Leaf.new(1,3), Leaf.new(10,15,20)]))
+    fix_tree!(tree2)
+    assert_equal(tree, tree2)
+
+    # Delete the first key from non-first leaf.
+    tree = Tree.new(Leaf.new(1, 2, 15, 20))
+    insert!(tree, 10)
+    delete!(tree, 10)
+    tree2 = Tree.new(Internal.new([15], [Leaf.new(1, 2), Leaf.new(15, 20)]))
+    fix_tree!(tree2)
+    assert_equal(tree, tree2)
+
+    # Delete non-first key from non-first leaf.
+    tree = Tree.new(Leaf.new(1, 2, 15, 20))
+    insert!(tree, 10)
+    delete!(tree, 15)
+    tree2 = Tree.new(Internal.new([10], [Leaf.new(1, 2), Leaf.new(10, 20)]))
+    fix_tree!(tree2)
     assert_equal(tree, tree2)
 
     # underflow first leaf causing donation from right
@@ -229,6 +241,24 @@ class Tests < Test::Unit::TestCase
     fix_tree!(tree2)
     assert_equal(tree, tree2)
 
+    # underflow first leaf causing right merge that underflows root
+    tree = Tree.new(Leaf.new(1, 2, 6, 10))
+    insert!(tree, 5)
+    delete!(tree, 10)
+    delete!(tree, 2)
+    tree2 = Tree.new(Leaf.new(1, 5, 6))
+    assert_equal(tree, tree2)
+
+    # underflow non-first leaf causing left merge that underflows root
+    tree = Tree.new(Leaf.new(1, 2, 6, 10))
+    insert!(tree, 5)
+    delete!(tree, 6)
+    delete!(tree, 10)
+    tree2 = Tree.new(Leaf.new(1, 2, 5))
+    assert_equal(tree, tree2)
+  end
+
+  def test_delete_for_height_three
     # underflow first leaf causing right merge that underflows non-root parent.
     # it then accepts a donation from the right.
     tree = Tree.new(Internal.new([20],
@@ -506,10 +536,11 @@ def get_next_leaf(leaf)
 end
 
 def fix_parents!(tree)
+  tree.root.parent = nil
   fix_parents_helper!(tree.root)
 end
 
-# Assume everything above and including this node is correct.
+# Assume this node and everything above it have correct parent set.
 def fix_parents_helper!(node)
   if node.is_a?(Leaf)
     return
@@ -523,8 +554,8 @@ end
 
 def fix_next_leaf_links!(tree)
   leaf = get_first_leaf(tree)
-
-  while (nleaf = get_next_leaf(leaf)) != nil
+  while leaf != nil
+    nleaf = get_next_leaf(leaf)
     leaf.next_leaf = nleaf
     leaf = nleaf
   end
