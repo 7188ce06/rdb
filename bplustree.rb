@@ -490,12 +490,14 @@ def findIntHelper(node, key)
   end
 end
 
+# XXX: Implement
 def find(root, value)
-
+  raise "implement"
 end
 
+# XXX: Implement
 def findRange(root, low, high)
-
+  raise "implement"
 end
 
 def is_sorted(xs)
