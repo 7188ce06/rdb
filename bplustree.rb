@@ -348,6 +348,7 @@ end
 def handle_internal_underflow!(tree, node)
   assert(node.is_a?(Internal))
   assert(node.childs.size() < MIN_INTERNAL_CHILDREN)
+  assert(node.keys.size() + 1 == node.childs.size())
 
   if tree.root.object_id == node.object_id
     assert_equal(node.childs.size(), 1)
@@ -421,7 +422,10 @@ def handle_internal_underflow!(tree, node)
       rightsib = node.parent.childs[i+1]
       assert(rightsib.is_a?(Internal))
       if node.childs.size() + rightsib.childs.size() <= MAX_INTERNAL_CHILDREN
-        # XXX: Make this work when node has more than one child.
+        # HACK: If the min-max configuration was different, then we could be
+        # merging when node has more than one child in which case this code would
+        # not work.
+        assert(node.childs.size() == 1)
         rightsib.childs.insert(0, node.childs[0])
         rightsib.childs[0].parent = rightsib
         rightsib.keys.insert(0, least_key_in_subtree(rightsib.childs[1]))

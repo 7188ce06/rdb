@@ -292,9 +292,9 @@ class Tests < Test::Unit::TestCase
        Internal.new([30], [Leaf.new(20,21), Leaf.new(30,31)]),
        Internal.new([50], [Leaf.new(40,41), Leaf.new(50,51)])]))
     fix_tree!(tree)
-    delete!(tree, 11)
+    delete!(tree, 2)
     tree2 = Tree.new(Internal.new([40],
-      [Internal.new([20,30], [Leaf.new(1,2,10), Leaf.new(20,21), Leaf.new(30,31)]),
+      [Internal.new([20,30], [Leaf.new(1,10,11), Leaf.new(20,21), Leaf.new(30,31)]),
        Internal.new([50], [Leaf.new(40,41), Leaf.new(50,51)])]))
     fix_tree!(tree2)
     assert_equal(tree, tree2)
@@ -312,6 +312,10 @@ class Tests < Test::Unit::TestCase
        Internal.new([30,40], [Leaf.new(20,21), Leaf.new(30,31), Leaf.new(40,41,50)])]))
     fix_tree!(tree2)
     assert_equal(tree, tree2)
+  end
+
+  def test_delete_for_height_four
+    # XXX: Implement.
   end
 end
 
