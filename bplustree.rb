@@ -147,6 +147,7 @@ def promote_from_leaf!(tree, node)
   end
 end
 
+# XXX: Is this buggy?
 def promote_from_internal!(tree, node)
   assert(node.is_a?(Internal))
 
@@ -171,19 +172,18 @@ def promote_from_internal!(tree, node)
       i += 1
     end
     node.parent.keys.insert(i, pkey)
-    # XXX: Is that the right comparison?
-    assert(node.parent.keys.size() <= MAX_LEAF_KEYS+1)
+    assert(node.parent.keys.size() <= MAX_INTERNAL_CHILDREN)
 
     right = Internal.new(right_keys, right_childs)
     right.childs.each {|c| c.parent = right}
     right.parent = node.parent
     node.parent.childs.insert(i+1, right)
+    assert(node.parent.childs.size() <= MAX_INTERNAL_CHILDREN+1)
 
     # Fix the left.
     node.keys.delete_at(INTERNAL_PROMO_INDEX)
 
-    # XXX: Is that the right comparison?
-    if node.parent.keys.size() == MAX_LEAF_KEYS
+    if node.parent.childs.size() == MAX_INTERNAL_CHILDREN+1
       promote_from_internal!(tree, node.parent)
     end
   end
