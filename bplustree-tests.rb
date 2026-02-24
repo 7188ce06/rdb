@@ -314,6 +314,25 @@ class Tests < Test::Unit::TestCase
     assert_equal(tree, tree2)
   end
 
+  def test_all_underflow_for_height_three
+    tree = Tree.new(
+      Internal.new([100], [
+        Internal.new([50], [Leaf.new(1,2),  Leaf.new(50,51)]),
+        Internal.new([150], [Leaf.new(100,101), Leaf.new(150,151)])
+      ])
+    )
+    fix_tree!(tree)
+    delete!(tree, 151)
+
+    expected = Tree.new(
+      Internal.new([50,100], [
+        Leaf.new(1,2), Leaf.new(50,51), Leaf.new(100,101,150)
+      ])
+    )
+    fix_tree!(expected)
+    assert_equal(expected, tree)
+  end
+
   def test_delete_for_height_four
     # XXX: Implement.
   end

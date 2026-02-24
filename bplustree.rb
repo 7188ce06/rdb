@@ -346,7 +346,6 @@ def handle_internal_underflow!(tree, node)
     assert_equal(node.childs.size(), 1)
     tree.root = node.childs[0]
     tree.root.parent = nil
-    assert(tree.root.is_a?(Leaf))
     return
   else
     # first try to get a donation from the right or left.
@@ -391,7 +390,7 @@ def handle_internal_underflow!(tree, node)
     if i > 0
       leftsib = node.parent.childs[i-1]
       assert(leftsib.is_a?(Internal))
-      if leftsib.childs.size() > MIN_LEAF_KEYS
+      if leftsib.childs.size() > MIN_INTERNAL_CHILDREN
         # The least element of the @node subtree changes because its accepting
         # elements from a left subtree. Therefore, the parent key between left
         # sibling and @node must be updated.
