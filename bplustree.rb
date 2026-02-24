@@ -274,12 +274,8 @@ def handle_leaf_underflow!(tree, node)
       key = rightsib.keys.slice!(0)
       node.keys.append(key)
 
-      # Fix the internal node.
-      # XXX: We could do an upwards search instead.
-      (inode, keyidx) = findInt(tree, key)
-      assert(inode.is_a?(Internal))
-      assert_equal(inode.keys[keyidx], key)
-      inode.keys[keyidx] = rightsib.keys[0]
+      # Fix the parent.
+      node.parent.keys[i] = rightsib.keys[0]
       return
     end
   end
@@ -292,12 +288,8 @@ def handle_leaf_underflow!(tree, node)
       key = leftsib.keys.slice!(-1)
       node.keys.insert(0, key)
 
-      # Fix the internal node.
-      # XXX: We could do an upwards search instead.
-      (inode, keyidx) = findInt(tree, node.keys[1])
-      assert(inode.is_a?(Internal))
-      assert_equal(inode.keys[keyidx], node.keys[1])
-      inode.keys[keyidx] = key
+      # Fix the parent.
+      node.parent.keys[i-1] = key
       return
     end
   end
@@ -471,27 +463,6 @@ def least_key_in_subtree(node)
   else
     assert(node.is_a?(Internal))
     return least_key_in_subtree(node.childs[0])
-  end
-end
-
-def findInt(tree, key)
-  findIntHelper(tree.root, key)
-end
-
-def findIntHelper(node, key)
-  if node.is_a?(Leaf)
-    return nil
-  end
-
-  assert(node.is_a?(Internal))
-  i = 0
-  while i < node.keys.size()
-    if key == node.keys[i]
-      return [node, i]
-    elsif key < node.keys[i]
-      return findIntHelper(node.childs[i], key)
-    end
-    i += 1
   end
 end
 
