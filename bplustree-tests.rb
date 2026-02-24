@@ -317,6 +317,33 @@ class Tests < Test::Unit::TestCase
   def test_delete_for_height_four
     # XXX: Implement.
   end
+
+  def test_delete_internal_underflow_middle_node_right_merge_must_return
+    # Root has 4 internal children; deleting 31 causes:
+    # - leaf underflow in child1
+    # - internal underflow in child1 (a middle child)
+    # - merge-with-right should happen exactly once
+    tree = Tree.new(
+      Internal.new([20,40,60], [
+        Internal.new([10], [Leaf.new(1,2),  Leaf.new(10,11)]),
+        Internal.new([30], [Leaf.new(20,21), Leaf.new(30,31)]),
+        Internal.new([50], [Leaf.new(40,41), Leaf.new(50,51)]),
+        Internal.new([70], [Leaf.new(60,61), Leaf.new(70,71)])
+      ])
+    )
+    fix_tree!(tree)
+    delete!(tree, 31)
+
+    expected = Tree.new(
+      Internal.new([20,60], [
+        Internal.new([10], [Leaf.new(1,2), Leaf.new(10,11)]),
+        Internal.new([40,50], [Leaf.new(20,21,30), Leaf.new(40,41), Leaf.new(50,51)]),
+        Internal.new([70], [Leaf.new(60,61), Leaf.new(70,71)])
+      ])
+    )
+    fix_tree!(expected)
+    assert_equal(expected, tree)
+  end
 end
 
 class TestsForHelpers < Test::Unit::TestCase

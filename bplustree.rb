@@ -432,6 +432,8 @@ def handle_internal_underflow!(tree, node)
         if node.parent.childs.size < MIN_INTERNAL_CHILDREN
           handle_internal_underflow!(tree, node.parent)
         end
+
+        return
       end
     end
 
