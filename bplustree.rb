@@ -5,6 +5,7 @@ MIN_LEAF_KEYS = 2
 MAX_LEAF_KEYS = 4
 MIN_INTERNAL_CHILDREN = 2
 MAX_INTERNAL_CHILDREN = 4
+MAX_INTERNAL_KEYS = 3
 LEAF_PROMO_INDEX = 2
 INTERNAL_PROMO_INDEX = 1
 
@@ -172,13 +173,14 @@ def promote_from_internal!(tree, node)
       i += 1
     end
     node.parent.keys.insert(i, pkey)
-    assert(node.parent.keys.size() <= MAX_INTERNAL_CHILDREN)
+    assert(node.parent.keys.size() <= MAX_INTERNAL_KEYS+1)
 
     right = Internal.new(right_keys, right_childs)
     right.childs.each {|c| c.parent = right}
     right.parent = node.parent
     node.parent.childs.insert(i+1, right)
     assert(node.parent.childs.size() <= MAX_INTERNAL_CHILDREN+1)
+    assert(node.parent.keys.size() + 1 == node.parent.childs.size())
 
     # Fix the left.
     node.keys.delete_at(INTERNAL_PROMO_INDEX)
