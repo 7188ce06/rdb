@@ -372,22 +372,25 @@ def handle_internal_underflow!(tree, node)
       rightsib = node.parent.childs[i+1]
       assert(rightsib.is_a?(Internal))
       if rightsib.childs.size() > MIN_INTERNAL_CHILDREN
+        # The least element of the @node subtree does not change because it
+        # already contains elements that are smaller than any element in a
+        # right sibling.
+        # The least element of the right sibling changes because it loses its
+        # smallest subtree. Therefore, the parent key between @node and its
+        # next right sibling must be updated.
+
         # Accept the donation.
         child = rightsib.childs.slice!(0)
-        keyA = least_key_in_subtree(child)
-        node.keys.append(keyA)
+        key = least_key_in_subtree(child)
         node.childs.append(child)
+        node.keys.append(key)
         child.parent = node
 
-        # Fix up the sibling.
+        # Fix the sibling.
         rightsib.keys.delete_at(0)
 
-        # Fix the internal node.
-        keyB = least_key_in_subtree(rightsib.childs[0])
-        # XXX: We could do an upwards search instead.
-        (inode, keyidx) = findInt(tree, keyA)
-        assert(inode.is_a?(Internal))
-        inode.keys[keyidx] = keyB
+        # Fix the parent.
+        node.parent.keys[i] = least_key_in_subtree(rightsib.childs[0])
         return
       end
     end
@@ -397,21 +400,23 @@ def handle_internal_underflow!(tree, node)
       leftsib = node.parent.childs[i-1]
       assert(leftsib.is_a?(Internal))
       if leftsib.childs.size() > MIN_LEAF_KEYS
+        # The least element of the @node subtree changes because its accepting
+        # elements from a left subtree. Therefore, the parent key between left
+        # sibling and @node must be updated.
+        # The least element of the left sibling's tree does not change.
+
         # Accept the donation.
         child = leftsib.childs.slice!(-1)
+        key = least_key_in_subtree(node.childs[0])
         node.childs.insert(0, child)
+        node.keys.insert(0, key)
         child.parent = node
-        keyB = least_key_in_subtree(node.childs[1])
-        node.keys.insert(0, keyB)
 
         # Fix up the sibling.
         leftsib.keys.delete_at(-1)
 
         # Fix the internal node.
-        keyA = least_key_in_subtree(child)
-        (inode, keyidx) = findInt(tree, keyB)
-        assert(node.is_a?(Internal))
-        inode.keys[keyidx] = keyA
+        node.parent.keys[i-1] = least_key_in_subtree(child)
         return
       end
     end
